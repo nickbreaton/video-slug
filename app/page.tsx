@@ -9,7 +9,7 @@ export async function download() {
   const program = Effect.gen(function* () {
     const command = Command.make(
       "yt-dlp",
-      "https://youtu.be/LYrWA9_qas4?si=pqD1f7maysigX-pJ",
+      "https://youtu.be/LYrWA9_qas4",
       "--newline",
       "--progress-template",
       'download:{ "status": "downloading", "downloaded_bytes": %(progress.downloaded_bytes)s, "total_bytes": %(progress.total_bytes|null)s, "eta": %(progress.eta|null)s, "speed": %(progress.speed|null)s }',
