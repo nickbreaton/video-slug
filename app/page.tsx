@@ -1,6 +1,35 @@
+import { Command } from "@effect/platform";
+import { Effect, Stream, Console, Schema } from "effect";
+import { NodeContext } from "@effect/platform-node";
+import { YtDlpOutput } from "./schema";
+
 export async function download() {
   "use server";
-  console.log("test");
+
+  const program = Effect.gen(function* () {
+    const command = Command.make(
+      "yt-dlp",
+      "https://youtu.be/LYrWA9_qas4?si=pqD1f7maysigX-pJ",
+      "--newline",
+      "--progress-template",
+      'download:{ "status": "downloading", "downloaded_bytes": %(progress.downloaded_bytes)s, "total_bytes": %(progress.total_bytes|null)s, "eta": %(progress.eta|null)s, "speed": %(progress.speed|null)s }',
+      "-P",
+      "tmp",
+    );
+    const result = yield* Command.stream(command).pipe(
+      Stream.decodeText(),
+      Stream.splitLines,
+      Stream.mapEffect(Schema.decodeUnknown(YtDlpOutput)),
+      Stream.runForEach((x) => Console.log(typeof x, x)),
+    );
+    return result;
+  });
+
+  const res = await Effect.runPromise(
+    program.pipe(Effect.provide(NodeContext.layer)),
+  );
+
+  console.log(res);
 }
 
 export default function Home() {

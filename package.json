@@ -9,6 +9,9 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@effect/platform": "^0.93.5",
+    "@effect/platform-node": "^0.101.2",
+    "effect": "^3.19.8",
     "next": "16.0.5",
     "react": "19.2.0",
     "react-dom": "19.2.0"
