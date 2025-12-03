@@ -12,24 +12,12 @@ export const DownloadLive = DownloadRpcs.toLayer(
         return Effect.gen(function* () {
           const progressTemplate = [
             "download:{",
-            '"status": "downloading",',
             '"downloaded_bytes": %(progress.downloaded_bytes)s,',
             '"total_bytes": %(progress.total_bytes|null)s,',
             '"eta": %(progress.eta|null)s,',
             '"speed": %(progress.speed|null)s,',
-            '"percentage": %(progress._percent|null)s,',
             '"elapsed": %(progress.elapsed|null)s,',
-            '"id": "%(info.id|)s",',
-            '"title": "%(info.title|)s",',
-            '"ext": "%(info.ext|)s",',
-            '"filename": "%(info.filename|)s",',
-            '"duration": %(info.duration|null)s,',
-            '"uploader": "%(info.uploader|)s",',
-            '"upload_date": "%(info.upload_date|)s",',
-            '"channel": "%(info.channel|)s",',
-            '"view_count": %(info.view_count|null)s,',
-            '"thumbnail": "%(info.thumbnail|)s",',
-            '"webpage_url": "%(info.webpage_url|)s"',
+            '"id": "%(info.id|)s"',
             "}",
           ].join(" ");
 
@@ -37,10 +25,15 @@ export const DownloadLive = DownloadRpcs.toLayer(
             "yt-dlp",
             url.href,
             "--newline",
+            "--progress",
             "--progress-template",
             progressTemplate,
-            "-P",
-            "tmp",
+            "--dump-json",
+            "--no-quiet",
+            "--no-simulate",
+            "--restrict-filenames",
+            "--paths",
+            "tmp", // TODO: run command in tmp folder instead
           );
           return Command.stream(command).pipe(
             Stream.decodeText(),

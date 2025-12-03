@@ -1,31 +1,30 @@
 import { Schema } from "effect";
 
+export class VideoInfo extends Schema.Class<VideoInfo>("VideoInfo")({
+  id: Schema.String,
+  title: Schema.String,
+  description: Schema.optional(Schema.NullOr(Schema.String)),
+  uploader: Schema.optional(Schema.NullOr(Schema.String)),
+  duration: Schema.optional(Schema.NullOr(Schema.Number)),
+  webpage_url: Schema.optional(Schema.NullOr(Schema.String)),
+  thumbnail: Schema.optional(Schema.NullOr(Schema.String)),
+  upload_date: Schema.optional(Schema.NullOr(Schema.String)),
+  filename: Schema.optional(Schema.NullOr(Schema.String)),
+}) {}
+
 export class DownloadProgress extends Schema.Class<DownloadProgress>(
   "DownloadProgress",
 )({
-  status: Schema.Literal("downloading"),
-  // Core progress metrics
+  id: Schema.String,
   downloaded_bytes: Schema.Number,
-  total_bytes: Schema.NullOr(Schema.Number),
+  total_bytes: Schema.Number,
   eta: Schema.NullOr(Schema.Number),
   speed: Schema.NullOr(Schema.Number),
-  percentage: Schema.NullOr(Schema.Number),
   elapsed: Schema.NullOr(Schema.Number),
-  // Video info - metadata
-  id: Schema.NullOr(Schema.String),
-  title: Schema.NullOr(Schema.String),
-  ext: Schema.NullOr(Schema.String),
-  filename: Schema.NullOr(Schema.String),
-  duration: Schema.NullOr(Schema.Number),
-  uploader: Schema.NullOr(Schema.String),
-  upload_date: Schema.NullOr(Schema.String),
-  channel: Schema.NullOr(Schema.String),
-  view_count: Schema.NullOr(Schema.Number),
-  thumbnail: Schema.NullOr(Schema.String),
-  webpage_url: Schema.NullOr(Schema.String),
 }) {}
 
 export const YtDlpOutput = Schema.Union(
+  Schema.parseJson(VideoInfo),
   Schema.parseJson(DownloadProgress),
   Schema.String,
 );
