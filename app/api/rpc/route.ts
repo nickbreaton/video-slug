@@ -10,12 +10,35 @@ export const DownloadLive = DownloadRpcs.toLayer(
     return {
       Download: ({ url }) => {
         return Effect.gen(function* () {
+          const progressTemplate = [
+            "download:{",
+            '"status": "downloading",',
+            '"downloaded_bytes": %(progress.downloaded_bytes)s,',
+            '"total_bytes": %(progress.total_bytes|null)s,',
+            '"eta": %(progress.eta|null)s,',
+            '"speed": %(progress.speed|null)s,',
+            '"percentage": %(progress._percent|null)s,',
+            '"elapsed": %(progress.elapsed|null)s,',
+            '"id": "%(info.id|)s",',
+            '"title": "%(info.title|)s",',
+            '"ext": "%(info.ext|)s",',
+            '"filename": "%(info.filename|)s",',
+            '"duration": %(info.duration|null)s,',
+            '"uploader": "%(info.uploader|)s",',
+            '"upload_date": "%(info.upload_date|)s",',
+            '"channel": "%(info.channel|)s",',
+            '"view_count": %(info.view_count|null)s,',
+            '"thumbnail": "%(info.thumbnail|)s",',
+            '"webpage_url": "%(info.webpage_url|)s"',
+            "}",
+          ].join(" ");
+
           const command = Command.make(
             "yt-dlp",
             url.href,
             "--newline",
             "--progress-template",
-            'download:{ "status": "downloading", "downloaded_bytes": %(progress.downloaded_bytes)s, "total_bytes": %(progress.total_bytes|null)s, "eta": %(progress.eta|null)s, "speed": %(progress.speed|null)s }',
+            progressTemplate,
             "-P",
             "tmp",
           );
