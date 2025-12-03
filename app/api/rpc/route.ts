@@ -1,25 +1,42 @@
-import { User, UserRpcs } from "@/app/rpc/download";
-import { NodeHttpServer } from "@effect/platform-node";
+import { DownloadRpcs } from "@/app/rpc/download";
+import { YtDlpOutput } from "@/app/schema";
+import { Command } from "@effect/platform";
+import { NodeContext, NodeHttpServer } from "@effect/platform-node";
 import { RpcSerialization, RpcServer } from "@effect/rpc";
-import { Effect, Layer } from "effect";
+import { Effect, Layer, Schema, Stream } from "effect";
 
-export const UsersLive = UserRpcs.toLayer(
+export const DownloadLive = DownloadRpcs.toLayer(
   Effect.gen(function* () {
-    // const db = yield* UserRepository;
-
     return {
-      // UserList: () => Stream.fromIterableEffect(db.findMany),
-      UserById: ({ id }) => Effect.succeed(User.make({ id, name: "John Doe" })),
+      Download: ({ url }) => {
+        return Effect.gen(function* () {
+          const command = Command.make(
+            "yt-dlp",
+            url.href,
+            "--newline",
+            "--progress-template",
+            'download:{ "status": "downloading", "downloaded_bytes": %(progress.downloaded_bytes)s, "total_bytes": %(progress.total_bytes|null)s, "eta": %(progress.eta|null)s, "speed": %(progress.speed|null)s }',
+            "-P",
+            "tmp",
+          );
+          return Command.stream(command).pipe(
+            Stream.decodeText(),
+            Stream.splitLines,
+            Stream.mapEffect(Schema.decodeUnknown(YtDlpOutput)),
+            Stream.orDie,
+          );
+        }).pipe(Stream.unwrap);
+      },
     };
   }),
 );
 
 const RpcLive = Layer.mergeAll(
-  UsersLive,
+  DownloadLive,
   RpcSerialization.layerNdjson,
   NodeHttpServer.layerContext,
-);
+).pipe(Layer.provide(NodeContext.layer));
 
-const { handler } = RpcServer.toWebHandler(UserRpcs, { layer: RpcLive });
+const { handler } = RpcServer.toWebHandler(DownloadRpcs, { layer: RpcLive });
 
 export const POST = (request: Request) => handler(request);

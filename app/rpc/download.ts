@@ -1,17 +1,13 @@
 import { Rpc, RpcGroup } from "@effect/rpc";
 import { Schema } from "effect";
+import { YtDlpOutput } from "../schema";
 
-export class User extends Schema.Class<User>("User")({
-  id: Schema.String,
-  name: Schema.String,
-}) {}
-
-export class UserRpcs extends RpcGroup.make(
-  Rpc.make("UserById", {
-    success: User,
-    error: Schema.String,
+export class DownloadRpcs extends RpcGroup.make(
+  Rpc.make("Download", {
+    success: YtDlpOutput,
+    stream: true,
     payload: {
-      id: Schema.String,
+      url: Schema.URL,
     },
   }),
 ) {}

@@ -2,8 +2,8 @@
 
 import { FetchHttpClient } from "@effect/platform";
 import { RpcClient, RpcSerialization } from "@effect/rpc";
-import { Effect, Layer } from "effect";
-import { UserRpcs } from "../rpc/download";
+import { Console, Effect, Layer, Stream } from "effect";
+import { DownloadRpcs } from "../rpc/download";
 
 const RpcLive = RpcClient.layerProtocolHttp({
   url: "/api/rpc",
@@ -12,10 +12,13 @@ const RpcLive = RpcClient.layerProtocolHttp({
 export function DownloadButton() {
   const handleClick = () => {
     const program = Effect.gen(function* () {
-      const client = yield* RpcClient.make(UserRpcs);
-      const user = yield* client.UserById({ id: "123" });
-      console.log("User:", user);
-      return user;
+      const client = yield* RpcClient.make(DownloadRpcs);
+      const stream = client.Download({
+        url: new URL("https://www.youtube.com/watch?v=3PFLeteDuyQ"),
+      });
+      yield* Stream.runForEach(stream, (chunk) => {
+        return Console.log(chunk);
+      });
     }).pipe(Effect.scoped, Effect.provide(RpcLive));
 
     Effect.runPromiseExit(program).then((exit) => {
