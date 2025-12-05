@@ -1,9 +1,21 @@
 import { DownloadRpcs } from "@/app/rpc/download";
-import { YtDlpOutput } from "@/app/schema";
+import { VideoInfo, YtDlpOutput } from "@/app/schema";
 import { Command } from "@effect/platform";
 import { NodeContext, NodeHttpServer } from "@effect/platform-node";
 import { RpcSerialization, RpcServer } from "@effect/rpc";
-import { Console, Effect, Layer, Schema, Stream } from "effect";
+import {
+  Chunk,
+  Console,
+  Effect,
+  Exit,
+  Layer,
+  PubSub,
+  Queue,
+  Schema,
+  Scope,
+  Stream,
+  Take,
+} from "effect";
 
 class VideoDownloadCommand extends Effect.Service<VideoDownloadCommand>()(
   "VideoDownloadCommand",
@@ -57,11 +69,40 @@ class VideoDownloadManager extends Effect.Service<VideoDownloadManager>()(
       const videoDownloadCommand = yield* VideoDownloadCommand;
 
       const initiateDownload = Effect.fn(function* (url: URL) {
-        yield* videoDownloadCommand.download(url).pipe(
+        const downloadScope = yield* Scope.make(); // never close
+
+        const download = yield* videoDownloadCommand.download(url).pipe(
           Stream.tap((value) => Console.log(value)),
-          Stream.runDrain,
-          Effect.forkDaemon,
+          Stream.toPubSub({ capacity: "unbounded" }),
+          Scope.extend(downloadScope),
         );
+
+        // Stop the download if this handler ended in error
+        yield* Effect.addFinalizer((exit) => {
+          if (Exit.isSuccess(exit)) {
+            return Effect.void;
+          }
+          return Scope.close(downloadScope, exit);
+        });
+
+        const queue = yield* PubSub.subscribe(download);
+
+        // TODO: is there a better way to get the first matching value???
+        while ((yield* Queue.isShutdown(queue)) === false) {
+          const take = yield* Queue.take(queue);
+          const values = Chunk.toArray(
+            yield* Take.done(take).pipe(Effect.orDie), // TODO: actually populate error channel
+          );
+
+          for (const value of values) {
+            if (value instanceof VideoInfo) {
+              return value;
+            }
+          }
+        }
+
+        // TODO: actually populate error channel
+        return yield* Effect.dieMessage("Could not initiate download");
       });
 
       return { initiateDownload };

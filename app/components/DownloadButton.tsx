@@ -13,14 +13,14 @@ export function DownloadButton() {
   const handleClick = () => {
     const program = Effect.gen(function* () {
       const client = yield* RpcClient.make(DownloadRpcs);
-      yield* client.Download({
+      const videoInfo = yield* client.Download({
         url: new URL("https://www.youtube.com/watch?v=3PFLeteDuyQ"),
       });
-      console.log("Download initiated");
+      console.log("Download initiated", videoInfo);
     }).pipe(Effect.scoped, Effect.provide(RpcLive));
 
     Effect.runPromiseExit(program).then((exit) => {
-      console.log(exit);
+      console.log("exit:", exit);
     });
   };
 
