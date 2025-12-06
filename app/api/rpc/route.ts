@@ -1,27 +1,30 @@
-import { DownloadRpcs } from "@/app/rpc/download";
+import { DownloadInitiationError, DownloadRpcs } from "@/app/rpc/download";
 import { VideoInfo, YtDlpOutput } from "@/app/schema";
-import { Command } from "@effect/platform";
-import { NodeContext, NodeHttpServer } from "@effect/platform-node";
+import { Command, CommandExecutor } from "@effect/platform";
+import {
+  NodeCommandExecutor,
+  NodeContext,
+  NodeFileSystem,
+  NodeHttpServer,
+} from "@effect/platform-node";
 import { RpcSerialization, RpcServer } from "@effect/rpc";
 import {
-  Chunk,
   Console,
   Effect,
   Exit,
   Layer,
   Option,
-  PubSub,
-  Queue,
   Schema,
   Scope,
   Stream,
-  Take,
 } from "effect";
 
 class VideoDownloadCommand extends Effect.Service<VideoDownloadCommand>()(
   "VideoDownloadCommand",
   {
     effect: Effect.gen(function* () {
+      const exec = yield* CommandExecutor.CommandExecutor;
+
       const download = function (url: URL) {
         const progressTemplate = [
           "download:{",
@@ -49,8 +52,7 @@ class VideoDownloadCommand extends Effect.Service<VideoDownloadCommand>()(
           "tmp", // TODO: run command in tmp folder instead
         );
 
-        return Command.stream(command).pipe(
-          Stream.onStart(Console.log("💔")),
+        return exec.stream(command).pipe(
           Stream.decodeText(),
           Stream.splitLines,
           Stream.mapEffect(Schema.decodeUnknown(YtDlpOutput)),
@@ -83,12 +85,13 @@ class VideoDownloadManager extends Effect.Service<VideoDownloadManager>()(
         yield* Effect.forkDaemon(Stream.runDrain(download));
 
         // Stop the download if this handler ended in error
-        yield* Effect.addFinalizer((exit) => {
-          if (Exit.isSuccess(exit)) {
-            return Effect.void;
-          }
-          return Scope.close(downloadScope, exit);
-        });
+        yield* Effect.addFinalizer(
+          Exit.matchEffect({
+            onSuccess: () => Effect.void,
+            onFailure: (exit) =>
+              Scope.close(downloadScope, Exit.failCause(exit)),
+          }),
+        );
 
         const videoInfo = yield* download.pipe(
           Stream.find((value) => value instanceof VideoInfo),
@@ -96,8 +99,9 @@ class VideoDownloadManager extends Effect.Service<VideoDownloadManager>()(
         );
 
         if (Option.isNone(videoInfo)) {
-          // TODO: handle via actual error
-          return yield* Effect.dieMessage("Video info not found");
+          return yield* new DownloadInitiationError({
+            message: "Video info not found in stream",
+          });
         }
 
         return videoInfo.value;
@@ -127,6 +131,8 @@ const RpcLive = Layer.mergeAll(
 ).pipe(
   Layer.provide(NodeContext.layer),
   Layer.provide(VideoDownloadManager.Default),
+  Layer.provide(NodeCommandExecutor.layer),
+  Layer.provide(NodeFileSystem.layer),
 );
 
 const { handler } = RpcServer.toWebHandler(DownloadRpcs, { layer: RpcLive });
