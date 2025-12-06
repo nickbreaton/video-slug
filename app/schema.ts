@@ -12,9 +12,7 @@ export class VideoInfo extends Schema.Class<VideoInfo>("VideoInfo")({
   filename: Schema.optional(Schema.NullOr(Schema.String)),
 }) {}
 
-export class DownloadProgress extends Schema.Class<DownloadProgress>(
-  "DownloadProgress",
-)({
+export class DownloadProgress extends Schema.Class<DownloadProgress>("DownloadProgress")({
   id: Schema.String,
   downloaded_bytes: Schema.Number,
   total_bytes: Schema.Number,
@@ -23,8 +21,17 @@ export class DownloadProgress extends Schema.Class<DownloadProgress>(
   elapsed: Schema.NullOr(Schema.Number),
 }) {}
 
+export class DownloadMessage extends Schema.Class<DownloadMessage>("DownloadMessage")({
+  message: Schema.String,
+}) {}
+
+const DownloadMessageFromString = Schema.transform(Schema.String, DownloadMessage, {
+  encode: (metadata) => metadata.message,
+  decode: (message) => DownloadMessage.make({ message }),
+});
+
 export const YtDlpOutput = Schema.Union(
   Schema.parseJson(VideoInfo),
   Schema.parseJson(DownloadProgress),
-  Schema.String,
+  DownloadMessageFromString,
 );
