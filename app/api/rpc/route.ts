@@ -8,109 +8,93 @@ import {
   NodeHttpServer,
 } from "@effect/platform-node";
 import { RpcSerialization, RpcServer } from "@effect/rpc";
-import {
-  Console,
-  Effect,
-  Exit,
-  Layer,
-  Option,
-  Schema,
-  Scope,
-  Stream,
-} from "effect";
+import { Console, Effect, Exit, Layer, Option, Schema, Scope, Stream } from "effect";
 
-class VideoDownloadCommand extends Effect.Service<VideoDownloadCommand>()(
-  "VideoDownloadCommand",
-  {
-    effect: Effect.gen(function* () {
-      const exec = yield* CommandExecutor.CommandExecutor;
+class VideoDownloadCommand extends Effect.Service<VideoDownloadCommand>()("VideoDownloadCommand", {
+  effect: Effect.gen(function* () {
+    const exec = yield* CommandExecutor.CommandExecutor;
 
-      const download = function (url: URL) {
-        const progressTemplate = [
-          "download:{",
-          '"downloaded_bytes": %(progress.downloaded_bytes)s,',
-          '"total_bytes": %(progress.total_bytes|null)s,',
-          '"eta": %(progress.eta|null)s,',
-          '"speed": %(progress.speed|null)s,',
-          '"elapsed": %(progress.elapsed|null)s,',
-          '"id": "%(info.id|)s"',
-          "}",
-        ].join(" ");
+    const download = function (url: URL) {
+      const progressTemplate = [
+        "download:{",
+        '"downloaded_bytes": %(progress.downloaded_bytes)s,',
+        '"total_bytes": %(progress.total_bytes|null)s,',
+        '"eta": %(progress.eta|null)s,',
+        '"speed": %(progress.speed|null)s,',
+        '"elapsed": %(progress.elapsed|null)s,',
+        '"id": "%(info.id|)s"',
+        "}",
+      ].join(" ");
 
-        const command = Command.make(
-          "yt-dlp",
-          url.href,
-          "--newline",
-          "--progress",
-          "--progress-template",
-          progressTemplate,
-          "--dump-json",
-          "--no-quiet",
-          "--no-simulate",
-          "--restrict-filenames",
-          "--paths",
-          "tmp", // TODO: run command in tmp folder instead
-        );
+      const command = Command.make(
+        "yt-dlp",
+        url.href,
+        "--newline",
+        "--progress",
+        "--progress-template",
+        progressTemplate,
+        "--dump-json",
+        "--no-quiet",
+        "--no-simulate",
+        "--restrict-filenames",
+        "--paths",
+        "tmp", // TODO: run command in tmp folder instead
+      );
 
-        return exec.stream(command).pipe(
-          Stream.decodeText(),
-          Stream.splitLines,
-          Stream.mapEffect(Schema.decodeUnknown(YtDlpOutput)),
-          Stream.orDie, // TODO: remove
-        );
-      };
+      return exec.stream(command).pipe(
+        Stream.decodeText(),
+        Stream.splitLines,
+        Stream.mapEffect(Schema.decodeUnknown(YtDlpOutput)),
+        Stream.orDie, // TODO: remove
+      );
+    };
 
-      return { download };
-    }),
-  },
-) {}
+    return { download };
+  }),
+}) {}
 
-class VideoDownloadManager extends Effect.Service<VideoDownloadManager>()(
-  "VideoDownloadManager",
-  {
-    dependencies: [VideoDownloadCommand.Default],
-    effect: Effect.gen(function* () {
-      const videoDownloadCommand = yield* VideoDownloadCommand;
+class VideoDownloadManager extends Effect.Service<VideoDownloadManager>()("VideoDownloadManager", {
+  dependencies: [VideoDownloadCommand.Default],
+  effect: Effect.gen(function* () {
+    const videoDownloadCommand = yield* VideoDownloadCommand;
 
-      const initiateDownload = Effect.fn(function* (url: URL) {
-        const downloadScope = yield* Scope.make();
+    const initiateDownload = Effect.fn(function* (url: URL) {
+      const downloadScope = yield* Scope.make();
 
-        const download = yield* videoDownloadCommand.download(url).pipe(
-          Stream.tap((value) => Console.log(value)),
-          Stream.share({ capacity: "unbounded" }),
-          Scope.extend(downloadScope),
-        );
+      const download = yield* videoDownloadCommand.download(url).pipe(
+        Stream.tap((value) => Console.log(value)),
+        Stream.share({ capacity: "unbounded" }),
+        Scope.extend(downloadScope),
+      );
 
-        // Fork stream into background
-        yield* Effect.forkDaemon(Stream.runDrain(download));
+      // Fork stream into background
+      yield* Effect.forkDaemon(Stream.runDrain(download));
 
-        // Stop the download if this handler ended in error
-        yield* Effect.addFinalizer(
-          Exit.matchEffect({
-            onSuccess: () => Effect.void,
-            onFailure: (exit) =>
-              Scope.close(downloadScope, Exit.failCause(exit)),
-          }),
-        );
+      // Stop the download if this handler ended in error
+      yield* Effect.addFinalizer(
+        Exit.matchEffect({
+          onSuccess: () => Effect.void,
+          onFailure: (exit) => Scope.close(downloadScope, Exit.failCause(exit)),
+        }),
+      );
 
-        const videoInfo = yield* download.pipe(
-          Stream.find((value) => value instanceof VideoInfo),
-          Stream.runHead,
-        );
+      const videoInfo = yield* download.pipe(
+        Stream.find((value) => value instanceof VideoInfo),
+        Stream.runHead,
+      );
 
-        if (Option.isNone(videoInfo)) {
-          return yield* new DownloadInitiationError({
-            message: "Video info not found in stream",
-          });
-        }
+      if (Option.isNone(videoInfo)) {
+        return yield* new DownloadInitiationError({
+          message: "Video info not found in stream",
+        });
+      }
 
-        return videoInfo.value;
-      });
+      return videoInfo.value;
+    });
 
-      return { initiateDownload };
-    }),
-  },
-) {}
+    return { initiateDownload };
+  }),
+}) {}
 
 export const DownloadLive = DownloadRpcs.toLayer(
   Effect.gen(function* () {
