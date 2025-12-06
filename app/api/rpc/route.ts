@@ -9,6 +9,7 @@ import {
   Effect,
   Exit,
   Layer,
+  Option,
   PubSub,
   Queue,
   Schema,
@@ -49,6 +50,7 @@ class VideoDownloadCommand extends Effect.Service<VideoDownloadCommand>()(
         );
 
         return Command.stream(command).pipe(
+          Stream.onStart(Console.log("💔")),
           Stream.decodeText(),
           Stream.splitLines,
           Stream.mapEffect(Schema.decodeUnknown(YtDlpOutput)),
@@ -69,13 +71,16 @@ class VideoDownloadManager extends Effect.Service<VideoDownloadManager>()(
       const videoDownloadCommand = yield* VideoDownloadCommand;
 
       const initiateDownload = Effect.fn(function* (url: URL) {
-        const downloadScope = yield* Scope.make(); // never close
+        const downloadScope = yield* Scope.make();
 
         const download = yield* videoDownloadCommand.download(url).pipe(
           Stream.tap((value) => Console.log(value)),
-          Stream.toPubSub({ capacity: "unbounded" }),
+          Stream.share({ capacity: "unbounded" }),
           Scope.extend(downloadScope),
         );
+
+        // Fork stream into background
+        yield* Effect.forkDaemon(Stream.runDrain(download));
 
         // Stop the download if this handler ended in error
         yield* Effect.addFinalizer((exit) => {
@@ -85,24 +90,17 @@ class VideoDownloadManager extends Effect.Service<VideoDownloadManager>()(
           return Scope.close(downloadScope, exit);
         });
 
-        const queue = yield* PubSub.subscribe(download);
+        const videoInfo = yield* download.pipe(
+          Stream.find((value) => value instanceof VideoInfo),
+          Stream.runHead,
+        );
 
-        // TODO: is there a better way to get the first matching value???
-        while ((yield* Queue.isShutdown(queue)) === false) {
-          const take = yield* Queue.take(queue);
-          const values = Chunk.toArray(
-            yield* Take.done(take).pipe(Effect.orDie), // TODO: actually populate error channel
-          );
-
-          for (const value of values) {
-            if (value instanceof VideoInfo) {
-              return value;
-            }
-          }
+        if (Option.isNone(videoInfo)) {
+          // TODO: handle via actual error
+          return yield* Effect.dieMessage("Video info not found");
         }
 
-        // TODO: actually populate error channel
-        return yield* Effect.dieMessage("Could not initiate download");
+        return videoInfo.value;
       });
 
       return { initiateDownload };
