@@ -1,6 +1,6 @@
 import { Rpc, RpcGroup } from "@effect/rpc";
 import { Schema } from "effect";
-import { VideoInfo } from "../schema";
+import { DownloadProgress, VideoInfo } from "../schema";
 
 export class DownloadInitiationError extends Schema.TaggedError<DownloadInitiationError>(
   "DownloadInitiationError",
@@ -14,6 +14,14 @@ export class DownloadRpcs extends RpcGroup.make(
     error: DownloadInitiationError,
     payload: {
       url: Schema.URL,
+    },
+  }),
+  Rpc.make("GetDownloadProgress", {
+    success: DownloadProgress,
+    error: Schema.Void,
+    stream: true,
+    payload: {
+      id: Schema.String,
     },
   }),
 ) {}

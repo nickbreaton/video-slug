@@ -29,6 +29,6 @@
     "typescript": "^5.9.3"
   },
   "prettier": {
-    "printWidth": 100
+    "printWidth": 120
   }
 }

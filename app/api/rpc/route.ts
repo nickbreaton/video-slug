@@ -1,12 +1,8 @@
 import { DownloadInitiationError, DownloadRpcs } from "@/app/rpc/download";
-import { VideoInfo, YtDlpOutput } from "@/app/schema";
+import { DownloadProgress, VideoInfo, YtDlpOutput } from "@/app/schema";
 import { Command, CommandExecutor } from "@effect/platform";
-import {
-  NodeCommandExecutor,
-  NodeContext,
-  NodeFileSystem,
-  NodeHttpServer,
-} from "@effect/platform-node";
+import { NodeCommandExecutor, NodeContext, NodeFileSystem, NodeHttpServer } from "@effect/platform-node";
+import { PlatformError } from "@effect/platform/Error";
 import { RpcSerialization, RpcServer } from "@effect/rpc";
 import { Console, Effect, Exit, Layer, Option, Schema, Scope, Stream } from "effect";
 
@@ -45,7 +41,8 @@ class VideoDownloadCommand extends Effect.Service<VideoDownloadCommand>()("Video
         Stream.decodeText(),
         Stream.splitLines,
         Stream.mapEffect(Schema.decodeUnknown(YtDlpOutput)),
-        Stream.orDie, // TODO: remove
+        Stream.catchTag("ParseError", () => Effect.dieMessage("ParseError should be impossible")),
+        Stream.catchTag("BadArgument", () => Effect.dieMessage("Arguments should be static")),
       );
     };
 
@@ -53,10 +50,29 @@ class VideoDownloadCommand extends Effect.Service<VideoDownloadCommand>()("Video
   }),
 }) {}
 
+class DownloadStreamManager extends Effect.Service<DownloadStreamManager>()("DownloadStreamManager", {
+  effect: Effect.gen(function* () {
+    const streams: Record<string, Stream.Stream<typeof YtDlpOutput.Type, PlatformError>> = {};
+
+    const add = (id: string, stream: Stream.Stream<typeof YtDlpOutput.Type, PlatformError>) => {
+      return Effect.gen(function* () {
+        streams[id] = stream;
+      });
+    };
+
+    const get = (id: string) => {
+      return Option.fromNullable(streams[id]);
+    };
+
+    return { add, get };
+  }),
+}) {}
+
 class VideoDownloadManager extends Effect.Service<VideoDownloadManager>()("VideoDownloadManager", {
-  dependencies: [VideoDownloadCommand.Default],
+  dependencies: [VideoDownloadCommand.Default, DownloadStreamManager.Default],
   effect: Effect.gen(function* () {
     const videoDownloadCommand = yield* VideoDownloadCommand;
+    const downloadStreamManager = yield* DownloadStreamManager;
 
     const initiateDownload = Effect.fn(function* (url: URL) {
       const downloadScope = yield* Scope.make();
@@ -81,13 +97,15 @@ class VideoDownloadManager extends Effect.Service<VideoDownloadManager>()("Video
       const videoInfo = yield* download.pipe(
         Stream.find((value) => value instanceof VideoInfo),
         Stream.runHead,
+        Effect.catchTag("SystemError", () => new DownloadInitiationError({ message: "Error within download command" })),
       );
 
       if (Option.isNone(videoInfo)) {
-        return yield* new DownloadInitiationError({
-          message: "Video info not found in stream",
-        });
+        return yield* new DownloadInitiationError({ message: "Video info not found in stream" });
       }
+
+      // TODO: this appears to block the return
+      yield* downloadStreamManager.add(videoInfo.value.id, download);
 
       return videoInfo.value;
     });
@@ -99,22 +117,34 @@ class VideoDownloadManager extends Effect.Service<VideoDownloadManager>()("Video
 export const DownloadLive = DownloadRpcs.toLayer(
   Effect.gen(function* () {
     const videoDownloadManager = yield* VideoDownloadManager;
+    const downloadStreamManager = yield* DownloadStreamManager;
 
     return {
       Download: ({ url }) => {
         return videoDownloadManager.initiateDownload(url);
       },
+      GetDownloadProgress: ({ id }) =>
+        Effect.gen(function* () {
+          const result = downloadStreamManager.get(id);
+
+          if (Option.isNone(result)) {
+            return yield* Effect.dieMessage("TODO");
+          }
+
+          const next = result.value.pipe(
+            Stream.filter((value): value is DownloadProgress => value instanceof DownloadProgress),
+          );
+
+          return next;
+        }).pipe(Stream.unwrap),
     };
   }),
 );
 
-const RpcLive = Layer.mergeAll(
-  DownloadLive,
-  RpcSerialization.layerNdjson,
-  NodeHttpServer.layerContext,
-).pipe(
+const RpcLive = Layer.mergeAll(DownloadLive, RpcSerialization.layerNdjson, NodeHttpServer.layerContext).pipe(
   Layer.provide(NodeContext.layer),
   Layer.provide(VideoDownloadManager.Default),
+  Layer.provide(DownloadStreamManager.Default),
   Layer.provide(NodeCommandExecutor.layer),
   Layer.provide(NodeFileSystem.layer),
 );

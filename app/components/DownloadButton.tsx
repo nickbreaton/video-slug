@@ -2,7 +2,7 @@
 
 import { FetchHttpClient } from "@effect/platform";
 import { RpcClient, RpcSerialization } from "@effect/rpc";
-import { Effect, Layer } from "effect";
+import { Console, Effect, Layer, Stream } from "effect";
 import { DownloadRpcs } from "../rpc/download";
 
 const RpcLive = RpcClient.layerProtocolHttp({
@@ -16,7 +16,8 @@ export function DownloadButton() {
       const videoInfo = yield* client.Download({
         url: new URL("https://www.youtube.com/watch?v=3PFLeteDuyQ"),
       });
-      console.log("Download initiated", videoInfo);
+      const progress = client.GetDownloadProgress({ id: videoInfo.id });
+      yield* Stream.runForEach(Console.log)(progress);
     }).pipe(Effect.scoped, Effect.provide(RpcLive));
 
     Effect.runPromiseExit(program).then((exit) => {
