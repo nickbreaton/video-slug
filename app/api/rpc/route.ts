@@ -1,14 +1,27 @@
 import { DownloadInitiationError, DownloadRpcs } from "@/app/rpc/download";
 import { DownloadProgress, VideoInfo, VideoNotFoundError, YtDlpOutput } from "@/app/schema";
-import { Command, CommandExecutor } from "@effect/platform";
+import { Command, CommandExecutor, FileSystem } from "@effect/platform";
 import { NodeCommandExecutor, NodeContext, NodeFileSystem, NodeHttpServer } from "@effect/platform-node";
 import { PlatformError } from "@effect/platform/Error";
 import { RpcSerialization, RpcServer } from "@effect/rpc";
-import { Console, Effect, Exit, Layer, Option, Schema, Scope, Stream } from "effect";
+import { Config, Console, Effect, Exit, Layer, Option, Schema, Scope, Stream } from "effect";
+
+class VideoDirectoryService extends Effect.Service<VideoDirectoryService>()("VideoDirectoryService", {
+  effect: Effect.gen(function* () {
+    const dir = yield* Config.string("DOWNLOADS_DIR").pipe(Config.withDefault("./tmp"));
+    const fs = yield* FileSystem.FileSystem;
+
+    yield* fs.makeDirectory(dir, { recursive: true });
+
+    return { dir };
+  }),
+}) {}
 
 class VideoDownloadCommand extends Effect.Service<VideoDownloadCommand>()("VideoDownloadCommand", {
+  dependencies: [VideoDirectoryService.Default],
   effect: Effect.gen(function* () {
     const exec = yield* CommandExecutor.CommandExecutor;
+    const { dir } = yield* VideoDirectoryService;
 
     const download = function (url: URL) {
       const progressTemplate = [
@@ -33,7 +46,7 @@ class VideoDownloadCommand extends Effect.Service<VideoDownloadCommand>()("Video
         "--no-quiet",
         "--no-simulate",
         "--restrict-filenames",
-      ).pipe(Command.workingDirectory("./tmp")); // TODO: get working dir from env
+      ).pipe(Command.workingDirectory(dir));
 
       return exec.start(command).pipe(
         Effect.map((process) => Stream.concat(process.stdout, process.stderr)),
