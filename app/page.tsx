@@ -27,7 +27,14 @@ export default function Home() {
 
   return (
     <div>
-      <button onClick={handleClick} className="rounded bg-blue-500 px-4 py-2 text-white hover:bg-blue-600">
+      <button
+        onClick={handleClick}
+        className={`
+          rounded px-4 py-2 text-white
+          hover:bg-blue-600
+          md:bg-blue-500
+        `}
+      >
         Download
       </button>
     </div>
