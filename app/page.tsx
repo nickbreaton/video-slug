@@ -30,9 +30,10 @@ export default function Home() {
       <button
         onClick={handleClick}
         className={`
-          rounded px-4 py-2 text-white
-          hover:bg-blue-600
-          md:bg-blue-500
+          rounded
+          px-4
+          py-5 text-foreground
+          md:text-background
         `}
       >
         Download

@@ -14,6 +14,7 @@ const eslintConfig = defineConfig([
     rules: {
       ...betterTailwindcss.configs["recommended-warn"].rules,
       ...betterTailwindcss.configs["recommended-error"].rules,
+      "better-tailwindcss/enforce-consistent-line-wrapping": "off",
     },
     settings: {
       "better-tailwindcss": {
