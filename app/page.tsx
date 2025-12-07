@@ -4,10 +4,23 @@ import { FetchHttpClient } from "@effect/platform";
 import { RpcClient, RpcSerialization } from "@effect/rpc";
 import { Console, Effect, Layer, Stream } from "effect";
 import { DownloadRpcs } from "./rpc/download";
+import { css } from "../styled-system/css";
 
 const RpcLive = RpcClient.layerProtocolHttp({
   url: "/api/rpc",
 }).pipe(Layer.provide([FetchHttpClient.layer, RpcSerialization.layerNdjson]));
+
+const buttonClass = css({
+  px: 4,
+  py: 2,
+  rounded: "md",
+  bg: "background",
+  color: "foreground",
+  borderWidth: "1px",
+  borderColor: "accent.400",
+  cursor: "pointer",
+  _hover: { bg: "accent.200" },
+});
 
 export default function Home() {
   const handleClick = () => {
@@ -27,15 +40,7 @@ export default function Home() {
 
   return (
     <div>
-      <button
-        onClick={handleClick}
-        className={`
-          rounded
-          px-4
-          py-5 text-foreground
-          md:text-background
-        `}
-      >
+      <button onClick={handleClick} className={buttonClass}>
         Download
       </button>
     </div>

@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "prepare": "panda codegen",
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
@@ -19,14 +20,12 @@
   },
   "devDependencies": {
     "@effect/language-service": "^0.60.0",
-    "@tailwindcss/postcss": "^4.1.17",
+    "@pandacss/dev": "^1.6.1",
     "@types/node": "^24.10.1",
     "@types/react": "^19.2.7",
     "@types/react-dom": "^19.2.3",
     "eslint": "^9.39.1",
     "eslint-config-next": "16.0.7",
-    "eslint-plugin-better-tailwindcss": "^3.8.0",
-    "tailwindcss": "^4.1.17",
     "typescript": "^5.9.3"
   },
   "prettier": {
