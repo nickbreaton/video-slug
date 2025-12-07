@@ -11,8 +11,8 @@ const RpcLive = RpcClient.layerProtocolHttp({
 }).pipe(Layer.provide([FetchHttpClient.layer, RpcSerialization.layerNdjson]));
 
 const buttonClass = css({
-  px: 4,
-  py: 2,
+  px: "4",
+  py: "4",
   rounded: "md",
   bg: "background",
   color: "foreground",

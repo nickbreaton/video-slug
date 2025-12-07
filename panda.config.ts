@@ -58,4 +58,8 @@ export default defineConfig({
 
   // The output directory for your css system
   outdir: "styled-system",
+
+  // Strict mode options for maximum type safety
+  // Only allow token values for properties that have config tokens
+  strictTokens: true,
 });
