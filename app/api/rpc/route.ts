@@ -1,5 +1,5 @@
 import { DownloadInitiationError, DownloadRpcs } from "@/app/rpc/download";
-import { DownloadProgress, VideoInfo, VideoNotFoundError, YtDlpOutput } from "@/app/schema";
+import { DownloadMessage, DownloadProgress, VideoInfo, VideoNotFoundError, YtDlpOutput } from "@/app/schema";
 import { Command, CommandExecutor, FileSystem } from "@effect/platform";
 import { NodeCommandExecutor, NodeContext, NodeFileSystem, NodeHttpServer } from "@effect/platform-node";
 import { PlatformError } from "@effect/platform/Error";
@@ -53,8 +53,13 @@ class VideoDownloadCommand extends Effect.Service<VideoDownloadCommand>()("Video
         Stream.unwrap,
         Stream.decodeText(),
         Stream.splitLines,
-        Stream.tap((line) => (line.includes("Video unavailable") ? new VideoNotFoundError() : Effect.void)),
         Stream.mapEffect(Schema.decodeUnknown(YtDlpOutput)),
+        Stream.tap((output) => {
+          if (output instanceof DownloadMessage && output.message.includes("Video unavailable")) {
+            return new VideoNotFoundError();
+          }
+          return Effect.void;
+        }),
         Stream.catchTag("ParseError", () => Effect.dieMessage("ParseError should be impossible")),
         Stream.catchTag("BadArgument", () => Effect.dieMessage("Arguments should be static")),
       );
