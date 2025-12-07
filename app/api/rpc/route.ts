@@ -1,8 +1,8 @@
 import { DownloadInitiationError, DownloadRpcs } from "@/app/rpc/download";
-import { DownloadProgress, VideoInfo, YtDlpOutput } from "@/app/schema";
+import { DownloadProgress, VideoInfo, VideoNotFoundError, YtDlpOutput } from "@/app/schema";
 import { Command, CommandExecutor } from "@effect/platform";
 import { NodeCommandExecutor, NodeContext, NodeFileSystem, NodeHttpServer } from "@effect/platform-node";
-import { PlatformError } from "@effect/platform/Error";
+import { PlatformError, SystemError } from "@effect/platform/Error";
 import { RpcSerialization, RpcServer } from "@effect/rpc";
 import { Console, Effect, Exit, Layer, Option, Schema, Scope, Stream } from "effect";
 
@@ -37,9 +37,14 @@ class VideoDownloadCommand extends Effect.Service<VideoDownloadCommand>()("Video
         "tmp", // TODO: run command in tmp folder instead
       );
 
-      return exec.stream(command).pipe(
+      // const process = exec.start(command).pipe(Effect.map((x) => x.stdout));
+
+      return exec.start(command).pipe(
+        Effect.map((process) => Stream.concat(process.stdout, process.stderr)),
+        Stream.unwrap,
         Stream.decodeText(),
         Stream.splitLines,
+        Stream.tap((line) => (line.includes("Video unavailable") ? new VideoNotFoundError() : Effect.void)),
         Stream.mapEffect(Schema.decodeUnknown(YtDlpOutput)),
         Stream.catchTag("ParseError", () => Effect.dieMessage("ParseError should be impossible")),
         Stream.catchTag("BadArgument", () => Effect.dieMessage("Arguments should be static")),
@@ -83,9 +88,6 @@ class VideoDownloadManager extends Effect.Service<VideoDownloadManager>()("Video
         Scope.extend(downloadScope),
       );
 
-      // Fork stream into background
-      yield* Effect.forkDaemon(Stream.runDrain(download));
-
       // Stop the download if this handler ended in error
       yield* Effect.addFinalizer(
         Exit.matchEffect({
@@ -98,14 +100,21 @@ class VideoDownloadManager extends Effect.Service<VideoDownloadManager>()("Video
         Stream.find((value) => value instanceof VideoInfo),
         Stream.runHead,
         Effect.catchTag("SystemError", () => new DownloadInitiationError({ message: "Error within download command" })),
+        Effect.catchTag("VideoNotFoundError", () => new DownloadInitiationError({ message: "Video not found" })),
       );
 
       if (Option.isNone(videoInfo)) {
         return yield* new DownloadInitiationError({ message: "Video info not found in stream" });
       }
 
-      // TODO: this appears to block the return
-      yield* downloadStreamManager.add(videoInfo.value.id, download);
+      // Fork stream into background
+      yield* Effect.forkDaemon(Stream.runDrain(download));
+
+      // Save a reference to the stream before returning
+      yield* download.pipe(
+        Stream.catchTag("VideoNotFoundError", () => Effect.dieMessage("Video must be found at this point")),
+        (stream) => downloadStreamManager.add(videoInfo.value.id, stream),
+      );
 
       return videoInfo.value;
     });

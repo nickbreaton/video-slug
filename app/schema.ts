@@ -35,3 +35,8 @@ export const YtDlpOutput = Schema.Union(
   Schema.parseJson(DownloadProgress),
   DownloadMessageFromString,
 );
+
+export class VideoNotFoundError extends Schema.TaggedError<VideoNotFoundError>("VideoNotFoundError")(
+  "VideoNotFoundError",
+  {},
+) {}
