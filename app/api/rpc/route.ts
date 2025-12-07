@@ -2,7 +2,7 @@ import { DownloadInitiationError, DownloadRpcs } from "@/app/rpc/download";
 import { DownloadProgress, VideoInfo, VideoNotFoundError, YtDlpOutput } from "@/app/schema";
 import { Command, CommandExecutor } from "@effect/platform";
 import { NodeCommandExecutor, NodeContext, NodeFileSystem, NodeHttpServer } from "@effect/platform-node";
-import { PlatformError, SystemError } from "@effect/platform/Error";
+import { PlatformError } from "@effect/platform/Error";
 import { RpcSerialization, RpcServer } from "@effect/rpc";
 import { Console, Effect, Exit, Layer, Option, Schema, Scope, Stream } from "effect";
 
@@ -33,11 +33,7 @@ class VideoDownloadCommand extends Effect.Service<VideoDownloadCommand>()("Video
         "--no-quiet",
         "--no-simulate",
         "--restrict-filenames",
-        "--paths",
-        "tmp", // TODO: run command in tmp folder instead
-      );
-
-      // const process = exec.start(command).pipe(Effect.map((x) => x.stdout));
+      ).pipe(Command.workingDirectory("./tmp")); // TODO: get working dir from env
 
       return exec.start(command).pipe(
         Effect.map((process) => Stream.concat(process.stdout, process.stderr)),
