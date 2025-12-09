@@ -15,16 +15,16 @@ export default defineConfig({
       semanticTokens: {
         colors: {
           accent: {
-            50: { value: { base: "hsl(0, 0%, 98%)", _osDark: "hsl(220, 8%, 8%)" } },
-            100: { value: { base: "hsl(0, 0%, 94%)", _osDark: "hsl(220, 8%, 11%)" } },
-            200: { value: { base: "hsl(0, 0%, 88%)", _osDark: "hsl(220, 8%, 15%)" } },
-            300: { value: { base: "hsl(0, 0%, 82%)", _osDark: "hsl(220, 7%, 20%)" } },
-            400: { value: { base: "hsl(0, 0%, 65%)", _osDark: "hsl(220, 6%, 30%)" } },
-            500: { value: { base: "hsl(0, 0%, 51%)", _osDark: "hsl(220, 5%, 48%)" } },
-            600: { value: { base: "hsl(0, 0%, 38%)", _osDark: "hsl(220, 4%, 62%)" } },
-            700: { value: { base: "hsl(0, 0%, 26%)", _osDark: "hsl(220, 4%, 75%)" } },
-            800: { value: { base: "hsl(0, 0%, 15%)", _osDark: "hsl(220, 3%, 88%)" } },
-            900: { value: { base: "hsl(0, 0%, 0%)", _osDark: "hsl(220, 2%, 96%)" } },
+            50: { value: { base: "hsl(0, 0%, 98%)", _osDark: "hsl(220, 10%, 12%)" } },
+            100: { value: { base: "hsl(0, 0%, 94%)", _osDark: "hsl(220, 10%, 16%)" } },
+            200: { value: { base: "hsl(0, 0%, 88%)", _osDark: "hsl(220, 9%, 22%)" } },
+            300: { value: { base: "hsl(0, 0%, 82%)", _osDark: "hsl(220, 8%, 28%)" } },
+            400: { value: { base: "hsl(0, 0%, 65%)", _osDark: "hsl(220, 6%, 42%)" } },
+            500: { value: { base: "hsl(0, 0%, 51%)", _osDark: "hsl(220, 5%, 55%)" } },
+            600: { value: { base: "hsl(0, 0%, 38%)", _osDark: "hsl(220, 5%, 68%)" } },
+            700: { value: { base: "hsl(0, 0%, 26%)", _osDark: "hsl(220, 6%, 72%)" } },
+            800: { value: { base: "hsl(0, 0%, 15%)", _osDark: "hsl(220, 8%, 82%)" } },
+            900: { value: { base: "hsl(0, 0%, 0%)", _osDark: "hsl(220, 10%, 90%)" } },
           },
 
           background: { value: "{colors.accent.50}" },

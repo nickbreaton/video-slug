@@ -122,7 +122,11 @@ class VideoDownloadManager extends Effect.Service<VideoDownloadManager>()("Video
       }
 
       // Fork stream into background
-      yield* Effect.forkDaemon(Stream.runDrain(download));
+      yield* download.pipe(
+        Stream.onEnd(Console.log("TODO: save video info", videoInfo)),
+        Stream.runDrain,
+        Effect.forkDaemon,
+      );
 
       // Save a reference to the stream before returning
       yield* download.pipe(
