@@ -12,45 +12,23 @@ export default defineConfig({
 
   theme: {
     extend: {
-      tokens: {
+      semanticTokens: {
         colors: {
-          // Accent palette, matching the globals.css HSL values
           accent: {
-            50: { value: "hsl(0, 0%, 98%)" },
-            100: { value: "hsl(0, 0%, 94%)" },
-            200: { value: "hsl(0, 0%, 88%)" },
-            300: { value: "hsl(0, 0%, 82%)" },
-            400: { value: "hsl(0, 0%, 65%)" },
-            500: { value: "hsl(0, 0%, 51%)" },
-            600: { value: "hsl(0, 0%, 38%)" },
-            700: { value: "hsl(0, 0%, 26%)" },
-            800: { value: "hsl(0, 0%, 15%)" },
-            900: { value: "hsl(0, 0%, 0%)" },
+            50: { value: { base: "hsl(0, 0%, 98%)", _osDark: "hsl(220, 8%, 8%)" } },
+            100: { value: { base: "hsl(0, 0%, 94%)", _osDark: "hsl(220, 8%, 11%)" } },
+            200: { value: { base: "hsl(0, 0%, 88%)", _osDark: "hsl(220, 8%, 15%)" } },
+            300: { value: { base: "hsl(0, 0%, 82%)", _osDark: "hsl(220, 7%, 20%)" } },
+            400: { value: { base: "hsl(0, 0%, 65%)", _osDark: "hsl(220, 6%, 30%)" } },
+            500: { value: { base: "hsl(0, 0%, 51%)", _osDark: "hsl(220, 5%, 48%)" } },
+            600: { value: { base: "hsl(0, 0%, 38%)", _osDark: "hsl(220, 4%, 62%)" } },
+            700: { value: { base: "hsl(0, 0%, 26%)", _osDark: "hsl(220, 4%, 75%)" } },
+            800: { value: { base: "hsl(0, 0%, 15%)", _osDark: "hsl(220, 3%, 88%)" } },
+            900: { value: { base: "hsl(0, 0%, 0%)", _osDark: "hsl(220, 2%, 96%)" } },
           },
 
-          // Dark-mode accent palette; you can reference these in recipes or
-          // use them with conditional styles (e.g. data-theme, media queries)
-          accentDark: {
-            50: { value: "hsl(220, 8%, 8%)" },
-            100: { value: "hsl(220, 8%, 11%)" },
-            200: { value: "hsl(220, 8%, 15%)" },
-            300: { value: "hsl(220, 7%, 20%)" },
-            400: { value: "hsl(220, 6%, 30%)" },
-            500: { value: "hsl(220, 5%, 48%)" },
-            600: { value: "hsl(220, 4%, 62%)" },
-            700: { value: "hsl(220, 4%, 75%)" },
-            800: { value: "hsl(220, 3%, 88%)" },
-            900: { value: "hsl(220, 2%, 96%)" },
-          },
-
-          // Semantic colors for light mode – map to the accent scale
-          background: { value: "{colors.accent.100}" },
+          background: { value: "{colors.accent.50}" },
           foreground: { value: "{colors.accent.900}" },
-
-          // Semantic colors for dark mode – you can wire these up with
-          // conditional styles (e.g. via a data-theme or class)
-          backgroundDark: { value: "{colors.accentDark.50}" },
-          foregroundDark: { value: "{colors.accentDark.900}" },
         },
       },
     },

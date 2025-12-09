@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
-import { cx } from "../styled-system/css";
+import { css, cx } from "../styled-system/css";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -26,7 +26,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={cx(geistSans.variable, geistMono.variable)}
+        className={cx(geistSans.variable, geistMono.variable, css({ bg: "accent.100" }))}
         style={{ WebkitFontSmoothing: "antialiased", MozOsxFontSmoothing: "grayscale" }}
       >
         {children}

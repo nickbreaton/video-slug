@@ -4,30 +4,23 @@ import { FetchHttpClient } from "@effect/platform";
 import { RpcClient, RpcSerialization } from "@effect/rpc";
 import { Console, Effect, Layer, Stream } from "effect";
 import { DownloadRpcs } from "./rpc/download";
-import { css } from "../styled-system/css";
+import { css } from "@/styled-system/css";
+import { Add01Icon } from "hugeicons-react";
 
 const RpcLive = RpcClient.layerProtocolHttp({
   url: "/api/rpc",
 }).pipe(Layer.provide([FetchHttpClient.layer, RpcSerialization.layerNdjson]));
 
-const buttonClass = css({
-  px: "4",
-  py: "4",
-  rounded: "md",
-  bg: "background",
-  color: "foreground",
-  borderWidth: "1px",
-  borderColor: "accent.400",
-  cursor: "pointer",
-  _hover: { bg: "accent.200" },
-});
-
 export default function Home() {
   const handleClick = () => {
+    const video = prompt("Enter video URL", "https://www.youtube.com/watch?v=3PFLeteDuyQ");
+
+    if (!video) return;
+
     const program = Effect.gen(function* () {
       const client = yield* RpcClient.make(DownloadRpcs);
       const videoInfo = yield* client.Download({
-        url: new URL("https://www.youtube.com/watch?v=3PFLeteDuyQ"),
+        url: new URL(video),
       });
       const progress = client.GetDownloadProgress({ id: videoInfo.id });
       yield* Stream.runForEach(Console.log)(progress);
@@ -40,9 +33,24 @@ export default function Home() {
 
   return (
     <div>
-      <button onClick={handleClick} className={buttonClass}>
-        Download
-      </button>
+      <header className={css({ p: "4", display: "flex", justifyContent: "flex-end" })}>
+        <button
+          onClick={handleClick}
+          className={css({
+            rounded: "full",
+            bg: "accent.50",
+            boxShadow: "xs",
+            borderColor: "accent.300/50",
+            borderStyle: "solid",
+            borderWidth: "1",
+            p: "3",
+            color: "accent.700",
+          })}
+        >
+          <span className={css({ srOnly: true })}>Add</span>
+          <Add01Icon strokeWidth={2.5} size={16} />
+        </button>
+      </header>
     </div>
   );
 }
