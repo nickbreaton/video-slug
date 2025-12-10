@@ -1,10 +1,45 @@
 import { DownloadInitiationError, DownloadRpcs } from "@/app/rpc/download";
 import { DownloadMessage, DownloadProgress, VideoInfo, VideoNotFoundError, YtDlpOutput } from "@/app/schema";
 import { Command, CommandExecutor, FileSystem } from "@effect/platform";
-import { NodeCommandExecutor, NodeContext, NodeFileSystem, NodeHttpServer } from "@effect/platform-node";
+import { BunCommandExecutor, BunContext, BunFileSystem, BunHttpServer } from "@effect/platform-bun";
+import { SqliteClient } from "@effect/sql-sqlite-bun";
 import { PlatformError } from "@effect/platform/Error";
 import { RpcSerialization, RpcServer } from "@effect/rpc";
 import { Config, Console, Effect, Exit, Layer, Option, Schema, Scope, Stream } from "effect";
+import { SqlResolver } from "@effect/sql";
+
+class VideoRepo extends Effect.Service<VideoRepo>()("VideoRepo", {
+  effect: Effect.gen(function* () {
+    const sql = yield* SqliteClient.SqliteClient;
+
+    yield* sql`
+      CREATE TABLE IF NOT EXISTS videos (
+        id TEXT PRIMARY KEY,
+        title TEXT NOT NULL,
+        description TEXT,
+        uploader TEXT,
+        duration REAL,
+        webpage_url TEXT,
+        thumbnail TEXT,
+        upload_date TEXT,
+        filename TEXT
+      )
+    `;
+
+    const InsertVideoInfo = yield* SqlResolver.void("InsertVideoInfo", {
+      Request: VideoInfo,
+      execute: (requests) =>
+        sql`
+          INSERT INTO videos
+          ${sql.insert(requests)}
+        `,
+    });
+
+    return {
+      insert: InsertVideoInfo.execute,
+    };
+  }),
+}) {}
 
 class VideoDirectoryService extends Effect.Service<VideoDirectoryService>()("VideoDirectoryService", {
   effect: Effect.gen(function* () {
@@ -92,6 +127,7 @@ class VideoDownloadManager extends Effect.Service<VideoDownloadManager>()("Video
   effect: Effect.gen(function* () {
     const videoDownloadCommand = yield* VideoDownloadCommand;
     const downloadStreamManager = yield* DownloadStreamManager;
+    const videoRepo = yield* VideoRepo;
 
     const initiateDownload = Effect.fn(function* (url: URL) {
       const downloadScope = yield* Scope.make();
@@ -123,8 +159,9 @@ class VideoDownloadManager extends Effect.Service<VideoDownloadManager>()("Video
 
       // Fork stream into background
       yield* download.pipe(
-        Stream.onEnd(Console.log("TODO: save video info", videoInfo)),
+        Stream.onEnd(videoRepo.insert(videoInfo.value)),
         Stream.runDrain,
+        Effect.tapError((error) => Console.error(error)),
         Effect.forkDaemon,
       );
 
@@ -168,12 +205,24 @@ export const DownloadLive = DownloadRpcs.toLayer(
   }),
 );
 
-const RpcLive = Layer.mergeAll(DownloadLive, RpcSerialization.layerNdjson, NodeHttpServer.layerContext).pipe(
-  Layer.provide(NodeContext.layer),
+const SqlLive = Layer.unwrapEffect(
+  Effect.gen(function* () {
+    // TODO: use this to actually put in directory
+    const { dir } = yield* VideoDirectoryService;
+
+    return SqliteClient.layer({ filename: "local.db" });
+  }),
+);
+
+const RpcLive = Layer.mergeAll(DownloadLive, RpcSerialization.layerNdjson, BunHttpServer.layerContext).pipe(
+  Layer.provide(BunContext.layer),
   Layer.provide(VideoDownloadManager.Default),
   Layer.provide(DownloadStreamManager.Default),
-  Layer.provide(NodeCommandExecutor.layer),
-  Layer.provide(NodeFileSystem.layer),
+  Layer.provide(VideoRepo.Default),
+  Layer.provide(SqlLive),
+  Layer.provide(VideoDirectoryService.Default),
+  Layer.provide(BunCommandExecutor.layer),
+  Layer.provide(BunFileSystem.layer),
 );
 
 const { handler } = RpcServer.toWebHandler(DownloadRpcs, { layer: RpcLive });

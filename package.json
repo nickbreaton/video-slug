@@ -3,15 +3,17 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
+    "dev": "bunx --bun next dev",
+    "build": "bunx --bun next build",
+    "start": "bunx --bun next start",
     "lint": "eslint"
   },
   "dependencies": {
     "@effect/platform": "^0.93.6",
-    "@effect/platform-node": "^0.103.0",
+    "@effect/platform-bun": "^0.86.0",
     "@effect/rpc": "^0.72.2",
+    "@effect/sql": "^0.48.6",
+    "@effect/sql-sqlite-bun": "^0.49.0",
     "effect": "^3.19.9",
     "hugeicons-react": "^0.3.0",
     "next": "16.0.7",
