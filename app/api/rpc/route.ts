@@ -1,7 +1,7 @@
 import { DownloadInitiationError, DownloadRpcs } from "@/app/rpc/download";
 import { DownloadMessage, DownloadProgress, VideoInfo, VideoNotFoundError, YtDlpOutput } from "@/app/schema";
-import { Command, CommandExecutor, FileSystem } from "@effect/platform";
-import { BunCommandExecutor, BunContext, BunFileSystem, BunHttpServer } from "@effect/platform-bun";
+import { Command, CommandExecutor, FileSystem, Path } from "@effect/platform";
+import { BunContext, BunHttpServer } from "@effect/platform-bun";
 import { SqliteClient } from "@effect/sql-sqlite-bun";
 import { PlatformError } from "@effect/platform/Error";
 import { RpcSerialization, RpcServer } from "@effect/rpc";
@@ -50,12 +50,15 @@ class VideoRepo extends Effect.Service<VideoRepo>()("VideoRepo", {
 
 class VideoDirectoryService extends Effect.Service<VideoDirectoryService>()("VideoDirectoryService", {
   effect: Effect.gen(function* () {
-    const dir = yield* Config.string("DOWNLOADS_DIR").pipe(Config.withDefault("./tmp"));
     const fs = yield* FileSystem.FileSystem;
+    const path = yield* Path.Path;
 
-    yield* fs.makeDirectory(dir, { recursive: true });
+    const baseDir = yield* Config.string("DOWNLOADS_DIR").pipe(Config.withDefault("./tmp"));
+    const videosDir = path.join(baseDir, "videos");
 
-    return { dir };
+    yield* fs.makeDirectory(videosDir, { recursive: true });
+
+    return { baseDir, videosDir };
   }),
 }) {}
 
@@ -63,7 +66,7 @@ class VideoDownloadCommand extends Effect.Service<VideoDownloadCommand>()("Video
   dependencies: [VideoDirectoryService.Default],
   effect: Effect.gen(function* () {
     const exec = yield* CommandExecutor.CommandExecutor;
-    const { dir } = yield* VideoDirectoryService;
+    const { videosDir } = yield* VideoDirectoryService;
 
     const download = function (url: URL) {
       const progressTemplate = [
@@ -88,7 +91,7 @@ class VideoDownloadCommand extends Effect.Service<VideoDownloadCommand>()("Video
         "--no-quiet",
         "--no-simulate",
         "--restrict-filenames",
-      ).pipe(Command.workingDirectory(dir));
+      ).pipe(Command.workingDirectory(videosDir));
 
       return exec.start(command).pipe(
         Effect.map((process) => Stream.concat(process.stdout, process.stderr)),
@@ -218,22 +221,19 @@ export const DownloadLive = DownloadRpcs.toLayer(
 
 const SqlLive = Layer.unwrapEffect(
   Effect.gen(function* () {
-    // TODO: use this to actually put in directory
-    const { dir } = yield* VideoDirectoryService;
-
-    return SqliteClient.layer({ filename: "local.db" });
+    const { baseDir } = yield* VideoDirectoryService;
+    const path = yield* Path.Path;
+    return SqliteClient.layer({ filename: path.resolve(baseDir, "videos.db") });
   }),
 );
 
 const RpcLive = Layer.mergeAll(DownloadLive, RpcSerialization.layerNdjson, BunHttpServer.layerContext).pipe(
-  Layer.provide(BunContext.layer),
   Layer.provide(VideoDownloadManager.Default),
   Layer.provide(DownloadStreamManager.Default),
   Layer.provide(VideoRepo.Default),
   Layer.provide(SqlLive),
   Layer.provide(VideoDirectoryService.Default),
-  Layer.provide(BunCommandExecutor.layer),
-  Layer.provide(BunFileSystem.layer),
+  Layer.provide(BunContext.layer),
 );
 
 const { handler } = RpcServer.toWebHandler(DownloadRpcs, { layer: RpcLive });
