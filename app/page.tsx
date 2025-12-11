@@ -6,12 +6,23 @@ import { Console, Effect, Layer, Stream } from "effect";
 import { DownloadRpcs } from "./rpc/download";
 import { css } from "@/styled-system/css";
 import { Add01Icon } from "hugeicons-react";
+import { useEffect } from "react";
 
 const RpcLive = RpcClient.layerProtocolHttp({
   url: "/api/rpc",
 }).pipe(Layer.provide([FetchHttpClient.layer, RpcSerialization.layerNdjson]));
 
 export default function Home() {
+  useEffect(() => {
+    const program = Effect.gen(function* () {
+      const client = yield* RpcClient.make(DownloadRpcs);
+      const videos = yield* client.GetVideos();
+      console.log("videos:", videos);
+    }).pipe(Effect.scoped, Effect.provide(RpcLive));
+
+    Effect.runPromiseExit(program);
+  }, []);
+
   const handleClick = () => {
     const video = prompt("Enter video URL", "https://www.youtube.com/watch?v=3PFLeteDuyQ");
 

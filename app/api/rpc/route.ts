@@ -6,7 +6,7 @@ import { SqliteClient } from "@effect/sql-sqlite-bun";
 import { PlatformError } from "@effect/platform/Error";
 import { RpcSerialization, RpcServer } from "@effect/rpc";
 import { Config, Console, Effect, Exit, Layer, Option, Schema, Scope, Stream } from "effect";
-import { SqlResolver } from "@effect/sql";
+import { SqlResolver, SqlSchema } from "@effect/sql";
 
 class VideoRepo extends Effect.Service<VideoRepo>()("VideoRepo", {
   effect: Effect.gen(function* () {
@@ -35,8 +35,15 @@ class VideoRepo extends Effect.Service<VideoRepo>()("VideoRepo", {
         `,
     });
 
+    const getAllVideos = SqlSchema.findAll({
+      Request: Schema.Void,
+      Result: VideoInfo,
+      execute: () => sql`SELECT * FROM videos`,
+    });
+
     return {
       insert: InsertVideoInfo.execute,
+      getAll: () => getAllVideos(),
     };
   }),
 }) {}
@@ -182,6 +189,7 @@ export const DownloadLive = DownloadRpcs.toLayer(
   Effect.gen(function* () {
     const videoDownloadManager = yield* VideoDownloadManager;
     const downloadStreamManager = yield* DownloadStreamManager;
+    const videoRepo = yield* VideoRepo;
 
     return {
       Download: ({ url }) => {
@@ -201,6 +209,9 @@ export const DownloadLive = DownloadRpcs.toLayer(
 
           return next;
         }).pipe(Stream.unwrap),
+      GetVideos: () => {
+        return videoRepo.getAll();
+      },
     };
   }),
 );
