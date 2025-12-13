@@ -9,6 +9,9 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@effect-atom/atom": "^0.4.10",
+    "@effect-atom/atom-react": "^0.4.4",
+    "@effect/experimental": "^0.57.11",
     "@effect/platform": "^0.93.6",
     "@effect/platform-bun": "^0.86.0",
     "@effect/rpc": "^0.72.2",

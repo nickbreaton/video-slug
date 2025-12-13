@@ -3,43 +3,54 @@
 import { FetchHttpClient } from "@effect/platform";
 import { RpcClient, RpcSerialization } from "@effect/rpc";
 import { Console, Effect, Layer, Stream } from "effect";
+import { Atom, useAtomValue, useAtomSet } from "@effect-atom/atom-react";
 import { DownloadRpcs } from "./rpc/download";
 import { css } from "@/styled-system/css";
 import { Add01Icon } from "hugeicons-react";
-import { useEffect } from "react";
 
 const RpcLive = RpcClient.layerProtocolHttp({
   url: "/api/rpc",
 }).pipe(Layer.provide([FetchHttpClient.layer, RpcSerialization.layerNdjson]));
 
-export default function Home() {
-  useEffect(() => {
-    const program = Effect.gen(function* () {
-      const client = yield* RpcClient.make(DownloadRpcs);
-      const videos = yield* client.GetVideos();
-      console.log("videos:", videos);
-    }).pipe(Effect.scoped, Effect.provide(RpcLive));
+// Create runtime atom from the RPC layer
+const runtimeAtom = Atom.runtime(RpcLive);
 
-    Effect.runPromiseExit(program);
-  }, []);
+// Create atom for fetching videos
+const videosAtom = runtimeAtom.atom(
+  Effect.gen(function* () {
+    const client = yield* RpcClient.make(DownloadRpcs);
+    const videos = yield* client.GetVideos();
+    return videos;
+  }).pipe(Effect.scoped),
+);
+
+// Create function atom for downloading
+const downloadAtom = runtimeAtom.fn(
+  Effect.fnUntraced(function* (url: string) {
+    const client = yield* RpcClient.make(DownloadRpcs);
+    const videoInfo = yield* client.Download({
+      url: new URL(url),
+    });
+    const progress = client.GetDownloadProgress({ id: videoInfo.id });
+    yield* Stream.runForEach(Console.log)(progress);
+    return videoInfo;
+  }),
+);
+
+export default function Home() {
+  // Use the videos atom - this will automatically fetch on mount
+  const videosResult = useAtomValue(videosAtom);
+
+  // Get the download function
+  const download = useAtomSet(downloadAtom);
 
   const handleClick = () => {
     const video = prompt("Enter video URL", "https://www.youtube.com/watch?v=3PFLeteDuyQ");
 
     if (!video) return;
 
-    const program = Effect.gen(function* () {
-      const client = yield* RpcClient.make(DownloadRpcs);
-      const videoInfo = yield* client.Download({
-        url: new URL(video),
-      });
-      const progress = client.GetDownloadProgress({ id: videoInfo.id });
-      yield* Stream.runForEach(Console.log)(progress);
-    }).pipe(Effect.scoped, Effect.provide(RpcLive));
-
-    Effect.runPromiseExit(program).then((exit) => {
-      console.log("exit:", exit);
-    });
+    // Trigger the download
+    download(video);
   };
 
   return (
@@ -63,6 +74,9 @@ export default function Home() {
           <Add01Icon strokeWidth={2.5} size={16} />
         </button>
       </header>
+      <ul>
+        {videosResult._tag === "Success" && videosResult.value.map((video) => <li key={video.id}>{video.title}</li>)}
+      </ul>
     </div>
   );
 }
