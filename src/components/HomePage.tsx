@@ -1,11 +1,9 @@
-"use client";
-
 import { FetchHttpClient } from "@effect/platform";
 import { RpcClient, RpcSerialization } from "@effect/rpc";
 import { Console, Effect, Layer, Stream } from "effect";
 import { Atom, useAtomValue, useAtomSet } from "@effect-atom/atom-react";
-import { DownloadRpcs } from "./rpc/download";
-import { css } from "@/styled-system/css";
+import { DownloadRpcs } from "@/lib/rpc/download";
+import { css } from "../../styled-system/css";
 import { Add01Icon } from "hugeicons-react";
 
 const RpcLive = RpcClient.layerProtocolHttp({
@@ -37,7 +35,7 @@ const downloadAtom = runtimeAtom.fn(
   }),
 );
 
-export default function Home() {
+export default function HomePage() {
   // Use the videos atom - this will automatically fetch on mount
   const videosResult = useAtomValue(videosAtom);
 

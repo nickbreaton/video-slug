@@ -1,5 +1,6 @@
-import { DownloadInitiationError, DownloadRpcs } from "@/app/rpc/download";
-import { DownloadMessage, DownloadProgress, VideoInfo, VideoNotFoundError, YtDlpOutput } from "@/app/schema";
+import type { APIRoute } from 'astro';
+import { DownloadInitiationError, DownloadRpcs } from "@/lib/rpc/download";
+import { DownloadMessage, DownloadProgress, VideoInfo, VideoNotFoundError, YtDlpOutput } from "@/lib/schema";
 import { Command, CommandExecutor, FileSystem, Path } from "@effect/platform";
 import { BunContext, BunHttpServer } from "@effect/platform-bun";
 import { SqliteClient } from "@effect/sql-sqlite-bun";
@@ -238,4 +239,8 @@ const RpcLive = Layer.mergeAll(DownloadLive, RpcSerialization.layerNdjson, BunHt
 
 const { handler } = RpcServer.toWebHandler(DownloadRpcs, { layer: RpcLive });
 
-export const POST = (request: Request) => handler(request);
+export const POST: APIRoute = async ({ request }) => {
+  return handler(request);
+};
+
+export const prerender = false;
