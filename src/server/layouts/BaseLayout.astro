@@ -36,5 +36,23 @@ const {
     "
   >
     <slot />
+
+    <!-- PWA Service Worker Registration -->
+    <script>
+      // This runs only in the browser
+      if ('serviceWorker' in navigator) {
+        import('virtual:pwa-register').then(({ registerSW }) => {
+          registerSW({
+            immediate: true,
+            onNeedRefresh() {
+              console.log('New content available; please refresh.');
+            },
+            onOfflineReady() {
+              console.log('App is ready to work offline');
+            },
+          });
+        });
+      }
+    </script>
   </body>
 </html>

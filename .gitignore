@@ -16,6 +16,7 @@
 # astro
 /.astro/
 /dist/
+/dev-dist
 
 # production
 /build
