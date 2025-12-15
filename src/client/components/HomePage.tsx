@@ -2,8 +2,8 @@ import { FetchHttpClient } from "@effect/platform";
 import { RpcClient, RpcSerialization } from "@effect/rpc";
 import { Console, Effect, Layer, Stream } from "effect";
 import { Atom, useAtomValue, useAtomSet } from "@effect-atom/atom-react";
-import { DownloadRpcs } from "@/lib/rpc/download";
-import { css } from "../../styled-system/css";
+import { DownloadRpcs } from "@/schema/rpc/download";
+import { css } from "../../../styled-system/css";
 import { Add01Icon } from "hugeicons-react";
 
 const RpcLive = RpcClient.layerProtocolHttp({

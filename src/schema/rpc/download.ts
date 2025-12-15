@@ -1,6 +1,6 @@
 import { Rpc, RpcGroup } from "@effect/rpc";
 import { Schema } from "effect";
-import { DownloadProgress, VideoInfo } from "../schema.js";
+import { DownloadProgress, VideoInfo } from "../videos.js";
 
 export class DownloadInitiationError extends Schema.TaggedError<DownloadInitiationError>("DownloadInitiationError")(
   "DownloadInitiationError",

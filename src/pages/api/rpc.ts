@@ -1,6 +1,6 @@
-import type { APIRoute } from 'astro';
-import { DownloadInitiationError, DownloadRpcs } from "@/lib/rpc/download";
-import { DownloadMessage, DownloadProgress, VideoInfo, VideoNotFoundError, YtDlpOutput } from "@/lib/schema";
+import type { APIRoute } from "astro";
+import { DownloadInitiationError, DownloadRpcs } from "@/schema/rpc/download";
+import { DownloadMessage, DownloadProgress, VideoInfo, VideoNotFoundError, YtDlpOutput } from "@/schema/videos";
 import { Command, CommandExecutor, FileSystem, Path } from "@effect/platform";
 import { BunContext, BunHttpServer } from "@effect/platform-bun";
 import { SqliteClient } from "@effect/sql-sqlite-bun";
