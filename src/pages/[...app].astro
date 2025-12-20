@@ -1,5 +1,6 @@
 ---
-import { css } from '../../../styled-system/css';
+import App from '@/client/components/App';
+import { css } from '../../styled-system/css';
 import '@/styles/globals.css';
 
 interface Props {
@@ -35,24 +36,6 @@ const {
       -moz-osx-font-smoothing: grayscale;
     "
   >
-    <slot />
-
-    <!-- PWA Service Worker Registration -->
-    <script>
-      // This runs only in the browser
-      if ('serviceWorker' in navigator) {
-        import('virtual:pwa-register').then(({ registerSW }) => {
-          registerSW({
-            immediate: true,
-            onNeedRefresh() {
-              // console.log('New content available; please refresh.');
-            },
-            onOfflineReady() {
-              // console.log('App is ready to work offline');
-            },
-          });
-        });
-      }
-    </script>
+    <App client:only="react" />
   </body>
 </html>
