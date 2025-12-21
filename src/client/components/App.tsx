@@ -52,22 +52,15 @@ export default function HomePage() {
 
   return (
     <div>
-      <header className={css({ p: "4", display: "flex", justifyContent: "flex-end" })}>
+      <header className="flex justify-end p-4">
         <button
           onClick={handleClick}
-          className={css({
-            rounded: "full",
-            bg: "accent.50",
-            boxShadow: "xs",
-            boxShadowColor: "accent.100",
-            borderColor: "accent.100",
-            borderStyle: "solid",
-            borderWidth: "1",
-            p: "3",
-            color: "accent.700",
-          })}
+          className={`
+            rounded-full border border-solid border-blue-100 bg-blue-50 p-3 text-blue-700 shadow-xs
+            shadow-blue-100
+          `}
         >
-          <span className={css({ srOnly: true })}>Add</span>
+          <span className="sr-only">Add</span>
           <Add01Icon strokeWidth={2.5} size={16} />
         </button>
       </header>
