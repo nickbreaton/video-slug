@@ -56,8 +56,9 @@ export default function HomePage() {
         <button
           onClick={handleClick}
           className={`
-            rounded-full border border-solid border-blue-100 bg-blue-50 p-3 text-blue-700 shadow-xs
-            shadow-blue-100
+            rounded-full border border-solid border-neutral-6 bg-neutral-3 p-3 text-neutral-12
+            shadow-xs shadow-neutral-4
+            hover:border-neutral-7 hover:bg-neutral-4
           `}
         >
           <span className="sr-only">Add</span>
