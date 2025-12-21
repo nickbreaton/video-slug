@@ -4,7 +4,6 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "prepare": "panda codegen",
     "dev": "bunx --bun astro dev",
     "build": "bunx --bun astro build",
     "preview": "bunx --bun astro preview",
@@ -33,7 +32,6 @@
   "devDependencies": {
     "@astrojs/check": "^0.9.6",
     "@effect/language-service": "^0.60.0",
-    "@pandacss/dev": "^1.6.1",
     "@types/node": "^24.10.1",
     "@types/react": "^19.2.7",
     "@types/react-dom": "^19.2.3",

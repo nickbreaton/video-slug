@@ -41,7 +41,3 @@ yarn-error.log*
 *.tsbuildinfo
 
 tmp
-
-## Panda
-styled-system
-styled-system-studio
