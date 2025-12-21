@@ -1,0 +1,78 @@
+/**
+ * Radix UI Blue Scale Colors
+ *
+ * Source: https://github.com/radix-ui/colors/blob/dbdb85470547c7d34b9001f48fddb08ded335979/src/light.ts
+ *         https://github.com/radix-ui/colors/blob/dbdb85470547c7d34b9001f48fddb08ded335979/src/dark.ts
+ *
+ * Modified to use @media (prefers-color-scheme) instead of class-based theming
+ */
+
+:root {
+  --radix-blue-1: #fbfdff;
+  --radix-blue-2: #f4faff;
+  --radix-blue-3: #e6f4fe;
+  --radix-blue-4: #d5efff;
+  --radix-blue-5: #c2e5ff;
+  --radix-blue-6: #acd8fc;
+  --radix-blue-7: #8ec8f6;
+  --radix-blue-8: #5eb1ef;
+  --radix-blue-9: #0090ff;
+  --radix-blue-10: #0588f0;
+  --radix-blue-11: #0d74ce;
+  --radix-blue-12: #113264;
+}
+
+@supports (color: color(display-p3 1 1 1)) {
+  @media (color-gamut: p3) {
+    :root {
+      --radix-blue-1: color(display-p3 0.986 0.992 0.999);
+      --radix-blue-2: color(display-p3 0.96 0.979 0.998);
+      --radix-blue-3: color(display-p3 0.912 0.956 0.991);
+      --radix-blue-4: color(display-p3 0.853 0.932 1);
+      --radix-blue-5: color(display-p3 0.788 0.894 0.998);
+      --radix-blue-6: color(display-p3 0.709 0.843 0.976);
+      --radix-blue-7: color(display-p3 0.606 0.777 0.947);
+      --radix-blue-8: color(display-p3 0.451 0.688 0.917);
+      --radix-blue-9: color(display-p3 0.247 0.556 0.969);
+      --radix-blue-10: color(display-p3 0.234 0.523 0.912);
+      --radix-blue-11: color(display-p3 0.15 0.44 0.84);
+      --radix-blue-12: color(display-p3 0.102 0.193 0.379);
+    }
+  }
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --radix-blue-1: #0d1520;
+    --radix-blue-2: #111927;
+    --radix-blue-3: #0d2847;
+    --radix-blue-4: #003362;
+    --radix-blue-5: #004074;
+    --radix-blue-6: #104d87;
+    --radix-blue-7: #205d9e;
+    --radix-blue-8: #2870bd;
+    --radix-blue-9: #0090ff;
+    --radix-blue-10: #3b9eff;
+    --radix-blue-11: #70b8ff;
+    --radix-blue-12: #c2e6ff;
+  }
+
+  @supports (color: color(display-p3 1 1 1)) {
+    @media (color-gamut: p3) {
+      :root {
+        --radix-blue-1: color(display-p3 0.057 0.081 0.122);
+        --radix-blue-2: color(display-p3 0.072 0.098 0.147);
+        --radix-blue-3: color(display-p3 0.078 0.154 0.27);
+        --radix-blue-4: color(display-p3 0.033 0.197 0.37);
+        --radix-blue-5: color(display-p3 0.08 0.245 0.441);
+        --radix-blue-6: color(display-p3 0.14 0.298 0.511);
+        --radix-blue-7: color(display-p3 0.195 0.361 0.6);
+        --radix-blue-8: color(display-p3 0.239 0.434 0.72);
+        --radix-blue-9: color(display-p3 0.247 0.556 0.969);
+        --radix-blue-10: color(display-p3 0.344 0.612 0.973);
+        --radix-blue-11: color(display-p3 0.49 0.72 1);
+        --radix-blue-12: color(display-p3 0.788 0.898 0.99);
+      }
+    }
+  }
+}

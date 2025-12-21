@@ -1,21 +1,36 @@
 @import "tailwindcss";
 @import "./radix-gray.css";
+@import "./radix-blue.css";
 
 @theme {
   /* Remove all default Tailwind color palettes */
   --color-*: initial;
 
-  /* Add Radix Gray scale (1-12) for light mode */
-  --color-neutral-1: var(--gray-1);
-  --color-neutral-2: var(--gray-2);
-  --color-neutral-3: var(--gray-3);
-  --color-neutral-4: var(--gray-4);
-  --color-neutral-5: var(--gray-5);
-  --color-neutral-6: var(--gray-6);
-  --color-neutral-7: var(--gray-7);
-  --color-neutral-8: var(--gray-8);
-  --color-neutral-9: var(--gray-9);
-  --color-neutral-10: var(--gray-10);
-  --color-neutral-11: var(--gray-11);
-  --color-neutral-12: var(--gray-12);
+  /* Add Radix Gray scale (1-12) as neutral */
+  --color-neutral-1: var(--radix-gray-1);
+  --color-neutral-2: var(--radix-gray-2);
+  --color-neutral-3: var(--radix-gray-3);
+  --color-neutral-4: var(--radix-gray-4);
+  --color-neutral-5: var(--radix-gray-5);
+  --color-neutral-6: var(--radix-gray-6);
+  --color-neutral-7: var(--radix-gray-7);
+  --color-neutral-8: var(--radix-gray-8);
+  --color-neutral-9: var(--radix-gray-9);
+  --color-neutral-10: var(--radix-gray-10);
+  --color-neutral-11: var(--radix-gray-11);
+  --color-neutral-12: var(--radix-gray-12);
+
+  /* Add Radix Blue scale (1-12) as accent */
+  --color-accent-1: var(--radix-blue-1);
+  --color-accent-2: var(--radix-blue-2);
+  --color-accent-3: var(--radix-blue-3);
+  --color-accent-4: var(--radix-blue-4);
+  --color-accent-5: var(--radix-blue-5);
+  --color-accent-6: var(--radix-blue-6);
+  --color-accent-7: var(--radix-blue-7);
+  --color-accent-8: var(--radix-blue-8);
+  --color-accent-9: var(--radix-blue-9);
+  --color-accent-10: var(--radix-blue-10);
+  --color-accent-11: var(--radix-blue-11);
+  --color-accent-12: var(--radix-blue-12);
 }
