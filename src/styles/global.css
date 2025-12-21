@@ -1,5 +1,5 @@
 @import "tailwindcss";
-@import "@radix-ui/colors/gray.css";
+@import "./radix-gray.css";
 
 @theme {
   /* Remove all default Tailwind color palettes */

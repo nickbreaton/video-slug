@@ -22,7 +22,6 @@
     "@effect/rpc": "^0.72.2",
     "@effect/sql": "^0.48.6",
     "@effect/sql-sqlite-bun": "^0.49.0",
-    "@radix-ui/colors": "^3.0.0",
     "@tailwindcss/vite": "^4.1.18",
     "@vite-pwa/astro": "^1.2.0",
     "astro": "^5.16.5",
