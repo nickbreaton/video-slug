@@ -37,7 +37,7 @@ const DownloadLive = DownloadRpcs.toLayer(
           return next;
         }).pipe(Stream.unwrap),
       GetVideos: () => {
-        return videoRepo.getAll().pipe(Effect.delay(1000));
+        return videoRepo.getAll();
       },
     };
   }),
