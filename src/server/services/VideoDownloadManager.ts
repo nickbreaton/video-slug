@@ -1,6 +1,6 @@
 import { DownloadInitiationError } from "@/schema/rpc/download";
 import { VideoInfo } from "@/schema/videos";
-import { Console, Effect, Exit, Option, Scope, Stream } from "effect";
+import { Console, Effect, Exit, Option, pipe, Scope, Stream } from "effect";
 import { VideoDownloadCommand } from "@/server/services/VideoDownloadCommand";
 import { DownloadStreamManager } from "@/server/services/DownloadStreamManager";
 import { VideoRepo } from "@/server/services/VideoRepo";
@@ -40,7 +40,10 @@ export class VideoDownloadManager extends Effect.Service<VideoDownloadManager>()
         return yield* new DownloadInitiationError({ message: "Video info not found in stream" });
       }
 
-      yield* videoRepo.insert(videoInfo.value);
+      yield* pipe(
+        videoRepo.insert(videoInfo.value),
+        Effect.mapError(() => new DownloadInitiationError({ message: "Error saving video info" })),
+      );
 
       // Fork stream into background
       yield* download.pipe(
