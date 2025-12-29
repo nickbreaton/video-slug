@@ -10,6 +10,7 @@ import { VideoDownloadManager } from "@/server/services/VideoDownloadManager";
 import { DownloadStreamManager } from "@/server/services/DownloadStreamManager";
 import { VideoRepo } from "@/server/services/VideoRepo";
 import { VideoDirectoryService } from "@/server/services/VideoDirectoryService";
+import { DownloadGarbageCollecter } from "@/server/services/DownloadGarbageCollector";
 
 const DownloadLive = DownloadRpcs.toLayer(
   Effect.gen(function* () {
@@ -50,7 +51,12 @@ const SqlLive = Layer.unwrapEffect(
   }),
 );
 
-const RpcLive = Layer.mergeAll(DownloadLive, RpcSerialization.layerNdjson, BunHttpServer.layerContext).pipe(
+const RpcLive = Layer.mergeAll(
+  DownloadLive,
+  RpcSerialization.layerNdjson,
+  BunHttpServer.layerContext,
+  DownloadGarbageCollecter.Default,
+).pipe(
   Layer.provide(VideoDownloadManager.Default),
   Layer.provide(DownloadStreamManager.Default),
   Layer.provide(VideoRepo.Default),
