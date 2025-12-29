@@ -6,7 +6,7 @@ import { DownloadRpcs } from "@/schema/rpc/download";
 import { Add01Icon, VideoReplayIcon } from "hugeicons-react";
 import { Reactivity } from "@effect/experimental";
 import type { VideoInfo } from "@/schema/videos";
-import type { VideoDownloadStatus } from "@/schema/rpc/download";
+import type { VideoDownloadStatus } from "@/schema/videos";
 
 class DownloadClient extends AtomRpc.Tag<DownloadClient>()("DownloadClient", {
   group: DownloadRpcs,

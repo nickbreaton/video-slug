@@ -40,3 +40,11 @@ export class VideoNotFoundError extends Schema.TaggedError<VideoNotFoundError>("
   "VideoNotFoundError",
   {},
 ) {}
+
+export const VideoDownloadStatus = Schema.Literal("downloading", "error", "complete");
+export type VideoDownloadStatus = typeof VideoDownloadStatus.Type;
+
+export const EnhancedVideoInfo = Schema.Struct({
+  info: VideoInfo,
+  status: VideoDownloadStatus,
+});

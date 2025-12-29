@@ -5,6 +5,7 @@ import { SqlResolver, SqlSchema } from "@effect/sql";
 import { VideoDirectoryService } from "./VideoDirectoryService";
 import { FileSystem, Path } from "@effect/platform";
 import { DownloadStreamManager } from "./DownloadStreamManager";
+import { EnhancedVideoInfo } from "@/schema/videos";
 
 export class VideoRepo extends Effect.Service<VideoRepo>()("VideoRepo", {
   dependencies: [VideoDirectoryService.Default, DownloadStreamManager.Default],
@@ -56,10 +57,12 @@ export class VideoRepo extends Effect.Service<VideoRepo>()("VideoRepo", {
                 const hasFile = yield* fs.exists(path.join(videosDir, video.filename));
                 const hasStream = Option.isSome(downloadStreamManager.get(video.id));
 
-                return {
+                const result: typeof EnhancedVideoInfo.Type = {
                   info: video,
                   status: hasFile ? "complete" : hasStream ? "downloading" : "error",
                 };
+
+                return result;
               }),
             ),
             { concurrency: "unbounded" },
