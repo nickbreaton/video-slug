@@ -1,6 +1,6 @@
 import { FetchHttpClient } from "@effect/platform";
 import { RpcClient, RpcSerialization } from "@effect/rpc";
-import { Console, Effect, Layer, Stream } from "effect";
+import { Console, Effect, Layer, Option, Stream } from "effect";
 import { Atom, useAtomValue, useAtomSet, AtomRpc, Result } from "@effect-atom/atom-react";
 import { DownloadRpcs } from "@/schema/rpc/download";
 import { Add01Icon, VideoReplayIcon } from "hugeicons-react";
@@ -14,8 +14,10 @@ class LocalVideoService extends Effect.Service<LocalVideoService>()("LocalVideoS
     return {
       writeCache: (value: EnhancedVideoInfo[]) =>
         Effect.sync(() => localStorage.setItem("videos", JSON.stringify(value))),
-      readCache: (): Effect.Effect<EnhancedVideoInfo[]> =>
-        Effect.sync(() => JSON.parse(localStorage.getItem("videos") || "[]")),
+      readCache: (): Effect.Effect<Option.Option<EnhancedVideoInfo[]>> =>
+        Effect.sync(() =>
+          Option.fromNullable(localStorage.getItem("videos")).pipe(Option.map((value) => JSON.parse(value))),
+        ),
     };
   }),
 }) {}
@@ -32,26 +34,24 @@ const videosAtom = DownloadClient.query("GetVideos", void 0, { reactivityKeys: [
 const runtime = Atom.runtime(DownloadClient.layer.pipe(Layer.merge(LocalVideoService.Default)));
 
 const cachedVideosAtom = runtime.atom((get) => {
-  return Stream.concat(
-    Stream.fromEffect(
-      Effect.gen(function* () {
-        const service = yield* LocalVideoService;
-        return yield* service.readCache();
-      }),
-    ),
-    get.streamResult(videosAtom).pipe(
-      Stream.tap((serverData) => {
-        return Effect.gen(function* () {
-          const service = yield* LocalVideoService;
-          yield* service.writeCache(serverData as EnhancedVideoInfo[]);
-        });
+  return Effect.gen(function* () {
+    const service = yield* LocalVideoService;
+    const cache = yield* service.readCache();
+
+    const cacheStream = Option.isSome(cache) ? Stream.make(cache.value) : Stream.empty;
+
+    const serverStream = get.streamResult(videosAtom).pipe(
+      Stream.tap((value) => {
+        return service.writeCache(value as EnhancedVideoInfo[]);
       }),
       Stream.catchAll(() => {
         console.log("TODO: Throw a toast or something to inform user of error but still keep online working well");
         return Stream.empty;
       }),
-    ),
-  );
+    );
+
+    return Stream.concat(cacheStream, serverStream);
+  }).pipe(Stream.unwrap);
 });
 
 const downloadAtom = DownloadClient.runtime.fn(
