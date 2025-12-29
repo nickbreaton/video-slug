@@ -7,6 +7,7 @@
     "skipLibCheck": true,
     "strict": true,
     "noEmit": true,
+    "noImplicitAny": true,
     "esModuleInterop": true,
     "module": "esnext",
     "moduleResolution": "bundler",
@@ -16,13 +17,13 @@
     "incremental": true,
     "plugins": [
       {
-        "name": "@effect/language-service"
-      }
+        "name": "@effect/language-service",
+      },
     ],
     "paths": {
-      "@/*": ["./src/*"]
-    }
+      "@/*": ["./src/*"],
+    },
   },
   "include": ["**/*.ts", "**/*.tsx", "**/*.mts", "src/**/*", ".astro/types.d.ts", "styled-system"],
-  "exclude": ["node_modules", "dist", ".astro"]
+  "exclude": ["node_modules", "dist", ".astro"],
 }

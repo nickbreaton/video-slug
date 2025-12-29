@@ -1,34 +1,40 @@
 import { FetchHttpClient } from "@effect/platform";
 import { RpcClient, RpcSerialization } from "@effect/rpc";
 import { Console, Effect, Layer, Stream } from "effect";
-import { Atom, useAtomValue, useAtomSet } from "@effect-atom/atom-react";
+import { Atom, useAtomValue, useAtomSet, AtomRpc } from "@effect-atom/atom-react";
 import { DownloadRpcs } from "@/schema/rpc/download";
 import { Add01Icon } from "hugeicons-react";
+import { Reactivity } from "@effect/experimental";
 
-const RpcLive = RpcClient.layerProtocolHttp({
-  url: "/api/rpc",
-}).pipe(Layer.provide([FetchHttpClient.layer, RpcSerialization.layerNdjson]));
+// const RpcLive = RpcClient.layerProtocolHttp({
+//   url: "/api/rpc",
+// }).pipe(Layer.provide([FetchHttpClient.layer, RpcSerialization.layerNdjson]));
+
+class DownloadClient extends AtomRpc.Tag<DownloadClient>()("DownloadClient", {
+  group: DownloadRpcs,
+  // Provide a `Layer` that provides the RpcClient.Protocol
+  protocol: RpcClient.layerProtocolHttp({
+    url: "/api/rpc",
+  }).pipe(Layer.provide(FetchHttpClient.layer), Layer.provide(RpcSerialization.layerNdjson)),
+}) {}
 
 // Create runtime atom from the RPC layer
-const runtimeAtom = Atom.runtime(RpcLive);
+// const runtimeAtom = DownloadClient.runtime;
 
 // Create atom for fetching videos
-const videosAtom = runtimeAtom.atom(
-  Effect.gen(function* () {
-    const client = yield* RpcClient.make(DownloadRpcs);
-    const videos = yield* client.GetVideos();
-    return videos;
-  }).pipe(Effect.scoped),
-);
+const videosAtom = DownloadClient.query("GetVideos", void 0, { reactivityKeys: ["videos"] });
 
 // Create function atom for downloading
-const downloadAtom = runtimeAtom.fn(
+const downloadAtom = DownloadClient.runtime.fn(
   Effect.fnUntraced(function* (url: string) {
-    const client = yield* RpcClient.make(DownloadRpcs);
-    const videoInfo = yield* client.Download({
+    const client = yield* DownloadClient;
+
+    const videoInfo = yield* client("Download", {
       url: new URL(url),
     });
-    const progress = client.GetDownloadProgress({ id: videoInfo.id });
+
+    yield* Reactivity.invalidate(["videos"]);
+    const progress = client("GetDownloadProgress", { id: videoInfo.id });
     yield* Stream.runForEach(Console.log)(progress);
     return videoInfo;
   }),
