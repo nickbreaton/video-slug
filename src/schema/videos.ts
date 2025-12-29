@@ -48,3 +48,4 @@ export const EnhancedVideoInfo = Schema.Struct({
   info: VideoInfo,
   status: VideoDownloadStatus,
 });
+export type EnhancedVideoInfo = typeof EnhancedVideoInfo.Type;

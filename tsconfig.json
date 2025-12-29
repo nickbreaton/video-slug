@@ -18,6 +18,12 @@
     "plugins": [
       {
         "name": "@effect/language-service",
+        "keyPatterns": [
+          {
+            "target": "service",
+            "pattern": "package-identifier",
+          },
+        ],
       },
     ],
     "paths": {

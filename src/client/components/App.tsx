@@ -7,6 +7,18 @@ import { Add01Icon, VideoReplayIcon } from "hugeicons-react";
 import { Reactivity } from "@effect/experimental";
 import type { VideoInfo } from "@/schema/videos";
 import type { VideoDownloadStatus } from "@/schema/videos";
+import { EnhancedVideoInfo } from "@/schema/videos";
+
+class LocalVideoService extends Effect.Service<LocalVideoService>()("LocalVideoService", {
+  effect: Effect.gen(function* () {
+    return {
+      writeCache: (value: EnhancedVideoInfo[]) =>
+        Effect.sync(() => localStorage.setItem("videos", JSON.stringify(value))),
+      readCache: (): Effect.Effect<EnhancedVideoInfo[]> =>
+        Effect.sync(() => JSON.parse(localStorage.getItem("videos") || "[]")),
+    };
+  }),
+}) {}
 
 class DownloadClient extends AtomRpc.Tag<DownloadClient>()("DownloadClient", {
   group: DownloadRpcs,
@@ -17,6 +29,26 @@ class DownloadClient extends AtomRpc.Tag<DownloadClient>()("DownloadClient", {
 }) {}
 
 const videosAtom = DownloadClient.query("GetVideos", void 0, { reactivityKeys: ["videos"] });
+const runtime = Atom.runtime(DownloadClient.layer.pipe(Layer.merge(LocalVideoService.Default)));
+
+const cachedVideosAtom = runtime.atom((get) => {
+  return Stream.concat(
+    Stream.fromEffect(
+      Effect.gen(function* () {
+        const service = yield* LocalVideoService;
+        return yield* service.readCache();
+      }),
+    ),
+    get.streamResult(videosAtom).pipe(
+      Stream.tap((serverData) => {
+        return Effect.gen(function* () {
+          const service = yield* LocalVideoService;
+          yield* service.writeCache(serverData as EnhancedVideoInfo[]);
+        });
+      }),
+    ),
+  );
+});
 
 const downloadAtom = DownloadClient.runtime.fn(
   Effect.fnUntraced(function* (url: string) {
@@ -61,7 +93,7 @@ function DownloadLineItem({ video, status }: { video: VideoInfo; status: VideoDo
 
 export default function HomePage() {
   // Use the videos atom - this will automatically fetch on mount
-  const videosResult = useAtomValue(videosAtom);
+  const videosResult = useAtomValue(cachedVideosAtom);
 
   // Get the download function
   const download = useAtomSet(downloadAtom);
