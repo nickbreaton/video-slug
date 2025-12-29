@@ -46,6 +46,10 @@ const cachedVideosAtom = runtime.atom((get) => {
           yield* service.writeCache(serverData as EnhancedVideoInfo[]);
         });
       }),
+      Stream.catchAll(() => {
+        console.log("TODO: Throw a toast or something to inform user of error but still keep online working well");
+        return Stream.empty;
+      }),
     ),
   );
 });
