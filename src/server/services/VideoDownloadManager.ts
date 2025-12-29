@@ -40,11 +40,6 @@ export class VideoDownloadManager extends Effect.Service<VideoDownloadManager>()
         return yield* new DownloadInitiationError({ message: "Video info not found in stream" });
       }
 
-      yield* pipe(
-        videoRepo.insert(videoInfo.value),
-        Effect.mapError(() => new DownloadInitiationError({ message: "Error saving video info" })),
-      );
-
       // Fork stream into background
       yield* download.pipe(
         Stream.runDrain,
@@ -56,6 +51,11 @@ export class VideoDownloadManager extends Effect.Service<VideoDownloadManager>()
       yield* download.pipe(
         Stream.catchTag("VideoNotFoundError", () => Effect.dieMessage("Video must be found at this point")),
         (stream) => downloadStreamManager.add(videoInfo.value.id, stream),
+      );
+
+      yield* pipe(
+        videoRepo.insert(videoInfo.value),
+        Effect.mapError(() => new DownloadInitiationError({ message: "Error saving video info" })),
       );
 
       return videoInfo.value;

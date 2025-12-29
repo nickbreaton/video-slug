@@ -6,6 +6,7 @@ import { DownloadRpcs } from "@/schema/rpc/download";
 import { Add01Icon, VideoReplayIcon } from "hugeicons-react";
 import { Reactivity } from "@effect/experimental";
 import type { VideoInfo } from "@/schema/videos";
+import type { VideoDownloadStatus } from "@/schema/rpc/download";
 
 class DownloadClient extends AtomRpc.Tag<DownloadClient>()("DownloadClient", {
   group: DownloadRpcs,
@@ -42,16 +43,18 @@ const getDownloadProgressByIdAtom = Atom.family((id: string | null) => {
   );
 });
 
-function DownloadLineItem({ video, complete }: { video: VideoInfo; complete: boolean }) {
-  const result = useAtomValue(getDownloadProgressByIdAtom(complete ? null : video.id));
+function DownloadLineItem({ video, status }: { video: VideoInfo; status: VideoDownloadStatus }) {
+  const result = useAtomValue(getDownloadProgressByIdAtom(status === "downloading" ? video.id : null));
   return (
     <li>
-      {video.title}
-      {result._tag === "Success" && (
-        <span>
-          {result.value.downloaded_bytes} / {result.value.total_bytes}
-        </span>
-      )}
+      {video.title} <span className="text-neutral-10">({status})</span>
+      <div>
+        {result._tag === "Success" && (
+          <span>
+            {result.value.downloaded_bytes} / {result.value.total_bytes}
+          </span>
+        )}
+      </div>
     </li>
   );
 }
@@ -90,7 +93,7 @@ export default function HomePage() {
       <ul>
         {videosResult._tag === "Success" &&
           videosResult.value.map((video) => (
-            <DownloadLineItem key={video.info.id} video={video.info} complete={video.complete} />
+            <DownloadLineItem key={video.info.id} video={video.info} status={video.status} />
           ))}
       </ul>
     </div>

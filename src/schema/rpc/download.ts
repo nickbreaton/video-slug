@@ -9,9 +9,12 @@ export class DownloadInitiationError extends Schema.TaggedError<DownloadInitiati
   },
 ) {}
 
+export const VideoDownloadStatus = Schema.Literal("downloading", "error", "complete");
+export type VideoDownloadStatus = typeof VideoDownloadStatus.Type;
+
 export const EnhancedVideoInfo = Schema.Struct({
   info: VideoInfo,
-  complete: Schema.Boolean,
+  status: VideoDownloadStatus,
 });
 
 export class DownloadRpcs extends RpcGroup.make(

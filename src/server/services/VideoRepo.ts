@@ -1,18 +1,19 @@
 import { VideoInfo } from "@/schema/videos";
 import { SqliteClient } from "@effect/sql-sqlite-bun";
-import { Effect, Schema } from "effect";
+import { Effect, Option, Schema } from "effect";
 import { SqlResolver, SqlSchema } from "@effect/sql";
-import { VideoDownloadManager } from "./VideoDownloadManager";
 import { VideoDirectoryService } from "./VideoDirectoryService";
 import { FileSystem, Path } from "@effect/platform";
+import { DownloadStreamManager } from "./DownloadStreamManager";
 
 export class VideoRepo extends Effect.Service<VideoRepo>()("VideoRepo", {
-  dependencies: [VideoDirectoryService.Default],
+  dependencies: [VideoDirectoryService.Default, DownloadStreamManager.Default],
   effect: Effect.gen(function* () {
     const sql = yield* SqliteClient.SqliteClient;
     const { videosDir } = yield* VideoDirectoryService;
     const path = yield* Path.Path;
     const fs = yield* FileSystem.FileSystem;
+    const downloadStreamManager = yield* DownloadStreamManager;
 
     yield* sql`
       CREATE TABLE IF NOT EXISTS videos (
@@ -52,11 +53,12 @@ export class VideoRepo extends Effect.Service<VideoRepo>()("VideoRepo", {
           return yield* Effect.all(
             videos.map(
               Effect.fn(function* (video) {
-                const exists = yield* fs.exists(path.join(videosDir, video.filename));
+                const hasFile = yield* fs.exists(path.join(videosDir, video.filename));
+                const hasStream = Option.isSome(downloadStreamManager.get(video.id));
 
                 return {
                   info: video,
-                  complete: exists,
+                  status: hasFile ? "complete" : hasStream ? "downloading" : "error",
                 };
               }),
             ),
