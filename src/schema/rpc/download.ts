@@ -9,6 +9,11 @@ export class DownloadInitiationError extends Schema.TaggedError<DownloadInitiati
   },
 ) {}
 
+export const EnhancedVideoInfo = Schema.Struct({
+  info: VideoInfo,
+  complete: Schema.Boolean,
+});
+
 export class DownloadRpcs extends RpcGroup.make(
   Rpc.make("Download", {
     success: VideoInfo,
@@ -26,7 +31,7 @@ export class DownloadRpcs extends RpcGroup.make(
     },
   }),
   Rpc.make("GetVideos", {
-    success: Schema.Array(VideoInfo),
+    success: Schema.Array(EnhancedVideoInfo),
     error: Schema.Void,
   }),
 ) {}

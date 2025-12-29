@@ -1,30 +1,22 @@
 import { FetchHttpClient } from "@effect/platform";
 import { RpcClient, RpcSerialization } from "@effect/rpc";
 import { Console, Effect, Layer, Stream } from "effect";
-import { Atom, useAtomValue, useAtomSet, AtomRpc } from "@effect-atom/atom-react";
+import { Atom, useAtomValue, useAtomSet, AtomRpc, Result } from "@effect-atom/atom-react";
 import { DownloadRpcs } from "@/schema/rpc/download";
-import { Add01Icon } from "hugeicons-react";
+import { Add01Icon, VideoReplayIcon } from "hugeicons-react";
 import { Reactivity } from "@effect/experimental";
-
-// const RpcLive = RpcClient.layerProtocolHttp({
-//   url: "/api/rpc",
-// }).pipe(Layer.provide([FetchHttpClient.layer, RpcSerialization.layerNdjson]));
+import type { VideoInfo } from "@/schema/videos";
 
 class DownloadClient extends AtomRpc.Tag<DownloadClient>()("DownloadClient", {
   group: DownloadRpcs,
-  // Provide a `Layer` that provides the RpcClient.Protocol
-  protocol: RpcClient.layerProtocolHttp({
-    url: "/api/rpc",
-  }).pipe(Layer.provide(FetchHttpClient.layer), Layer.provide(RpcSerialization.layerNdjson)),
+  protocol: RpcClient.layerProtocolHttp({ url: "/api/rpc" }).pipe(
+    Layer.provide(FetchHttpClient.layer),
+    Layer.provide(RpcSerialization.layerNdjson),
+  ),
 }) {}
 
-// Create runtime atom from the RPC layer
-// const runtimeAtom = DownloadClient.runtime;
-
-// Create atom for fetching videos
 const videosAtom = DownloadClient.query("GetVideos", void 0, { reactivityKeys: ["videos"] });
 
-// Create function atom for downloading
 const downloadAtom = DownloadClient.runtime.fn(
   Effect.fnUntraced(function* (url: string) {
     const client = yield* DownloadClient;
@@ -34,11 +26,35 @@ const downloadAtom = DownloadClient.runtime.fn(
     });
 
     yield* Reactivity.invalidate(["videos"]);
-    const progress = client("GetDownloadProgress", { id: videoInfo.id });
-    yield* Stream.runForEach(Console.log)(progress);
+
     return videoInfo;
   }),
 );
+
+const getDownloadProgressByIdAtom = Atom.family((id: string | null) => {
+  return DownloadClient.runtime.atom(
+    id == null
+      ? Stream.empty
+      : Effect.gen(function* () {
+          const client = yield* DownloadClient;
+          return client("GetDownloadProgress", { id });
+        }).pipe(Stream.unwrap, Stream.onEnd(Reactivity.invalidate(["videos"]))),
+  );
+});
+
+function DownloadLineItem({ video, complete }: { video: VideoInfo; complete: boolean }) {
+  const result = useAtomValue(getDownloadProgressByIdAtom(complete ? null : video.id));
+  return (
+    <li>
+      {video.title}
+      {result._tag === "Success" && (
+        <span>
+          {result.value.downloaded_bytes} / {result.value.total_bytes}
+        </span>
+      )}
+    </li>
+  );
+}
 
 export default function HomePage() {
   // Use the videos atom - this will automatically fetch on mount
@@ -72,7 +88,10 @@ export default function HomePage() {
         </button>
       </header>
       <ul>
-        {videosResult._tag === "Success" && videosResult.value.map((video) => <li key={video.id}>{video.title}</li>)}
+        {videosResult._tag === "Success" &&
+          videosResult.value.map((video) => (
+            <DownloadLineItem key={video.info.id} video={video.info} complete={video.complete} />
+          ))}
       </ul>
     </div>
   );

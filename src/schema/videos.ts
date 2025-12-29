@@ -9,7 +9,7 @@ export class VideoInfo extends Schema.Class<VideoInfo>("VideoInfo")({
   webpage_url: Schema.optional(Schema.NullOr(Schema.String)),
   thumbnail: Schema.optional(Schema.NullOr(Schema.String)),
   upload_date: Schema.optional(Schema.NullOr(Schema.String)),
-  filename: Schema.optional(Schema.NullOr(Schema.String)),
+  filename: Schema.String,
 }) {}
 
 export class DownloadProgress extends Schema.Class<DownloadProgress>("DownloadProgress")({
