@@ -27,11 +27,15 @@ class IndexedDBParseError extends Data.TaggedError("IndexedDBParseError")<{
 }> {}
 
 // Schema for stored records
+const Uint8ArraySchema = Schema.declare(
+  (input): input is Uint8Array<ArrayBuffer> => input instanceof Uint8Array,
+);
+
 const StoredVideo = Schema.Struct({
   id: Schema.String,
   index: Schema.Number,
   data: EnhancedVideoInfo,
-  blob: Schema.optionalWith(Schema.Uint8ArrayFromSelf, { as: "Option" }),
+  blob: Schema.optionalWith(Uint8ArraySchema, { as: "Option" }),
 });
 
 const StoredVideos = Schema.Array(StoredVideo);
@@ -112,6 +116,23 @@ class LocalVideoService extends Effect.Service<LocalVideoService>()("LocalVideoS
 
           transaction.oncomplete = () => resume(Effect.void);
           transaction.onerror = () => resume(Effect.fail(new IndexedDBWriteError({ cause: transaction.error })));
+        }),
+
+      getBlob: (id: string): Effect.Effect<Option.Option<Uint8Array<ArrayBuffer>>, IndexedDBReadError> =>
+        Effect.async((resume) => {
+          const transaction = db.transaction("videos", "readonly");
+          const store = transaction.objectStore("videos");
+          const request = store.get(id);
+
+          request.onsuccess = () => {
+            const record = request.result;
+            if (record?.blob) {
+              resume(Effect.succeed(Option.some(record.blob)));
+            } else {
+              resume(Effect.succeed(Option.none()));
+            }
+          };
+          request.onerror = () => resume(Effect.fail(new IndexedDBReadError({ cause: request.error })));
         }),
 
       get: (): Effect.Effect<Option.Option<EnhancedVideoInfo[]>, IndexedDBReadError | IndexedDBParseError> =>
@@ -221,15 +242,33 @@ const getDownloadProgressByIdAtom = Atom.family((id: string | null) => {
 });
 
 const videoDownloadAtom = runtime.fn(Effect.serviceFunctions(LocalVideoDownloadService).download);
+const openLocalCopyAtom = runtime.fn((id: string) => {
+  return Effect.gen(function* () {
+    const data = yield* Effect.serviceFunctions(LocalVideoService).getBlob(id);
+
+    if (Option.isSome(data)) {
+      const blob = new Blob([data.value.buffer], { type: "video/mp4" });
+      const url = URL.createObjectURL(blob);
+      window.open(url, "_blank");
+    }
+  });
+});
 
 function DownloadLineItem({ video, status }: { video: VideoInfo; status: VideoDownloadStatus }) {
   const result = useAtomValue(getDownloadProgressByIdAtom(status === "downloading" ? video.id : null));
-  const download = useAtomSet(videoDownloadAtom);
+  const downloadToLocal = useAtomSet(videoDownloadAtom);
+  const openLocalCopy = useAtomSet(openLocalCopyAtom);
 
   return (
     <li>
       {video.title} <span className="text-neutral-10">({status})</span>
-      {status === "complete" && <button onClick={async () => download(video.id)}>Download</button>}
+      {status === "complete" && (
+        <div className="border border-neutral-6 p-2 inline-block">
+          <button onClick={async () => downloadToLocal(video.id)}>Download</button>
+          {" • "}
+          <button onClick={async () => openLocalCopy(video.id)}>Open</button>
+        </div>
+      )}
       <div>
         {result._tag === "Success" && (
           <span>
