@@ -25,6 +25,7 @@
     "@tailwindcss/vite": "^4.1.18",
     "astro": "^5.16.5",
     "astrojs-service-worker": "^2.0.0",
+    "content-range": "^2.0.2",
     "effect": "^3.19.9",
     "eslint-plugin-better-tailwindcss": "^3.8.0",
     "hugeicons-react": "^0.3.0",

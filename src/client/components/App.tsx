@@ -81,7 +81,9 @@ const openLocalCopyAtom = runtime.fn((id: string) => {
 
 function DownloadLineItem({ video, status }: { video: VideoInfo; status: VideoDownloadStatus }) {
   const result = useAtomValue(getDownloadProgressByIdAtom(status === "downloading" ? video.id : null));
-  const downloadToLocal = useAtomSet(videoDownloadAtom);
+  const downloadToLocal = useAtomSet(videoDownloadAtom, {
+    mode: "promise",
+  });
   const openLocalCopy = useAtomSet(openLocalCopyAtom);
 
   return (
@@ -89,7 +91,7 @@ function DownloadLineItem({ video, status }: { video: VideoInfo; status: VideoDo
       {video.title} <span className="text-neutral-10">({status})</span>
       {status === "complete" && (
         <div className="border border-neutral-6 p-2 inline-block">
-          <button onClick={async () => downloadToLocal(video.id)}>Download</button>
+          <button onClick={async () => downloadToLocal(video.id).then(console.log, console.error)}>Download</button>
           {" • "}
           <button onClick={async () => openLocalCopy(video.id)}>Open</button>
         </div>

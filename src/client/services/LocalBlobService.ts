@@ -14,18 +14,18 @@ export class LocalBlobService extends Effect.Service<LocalBlobService>()("LocalB
     });
 
     return {
-      set: (id: string, blob: Blob) =>
+      write: (id: string, offset: number, buffer: ArrayBuffer) =>
         Effect.gen(function* () {
           const writable = yield* Effect.tryPromise({
             try: () =>
               directory
                 .getFileHandle(id, { create: true })
-                .then((file) => file.createWritable({ keepExistingData: false })), // TODO: change to true and do chunk by chunk
+                .then((file) => file.createWritable({ keepExistingData: true })),
             catch: () => "TODO_OPFSWriteError" as const,
           });
 
           yield* Effect.tryPromise({
-            try: () => writable.write(blob),
+            try: () => writable.write({ position: 0, data: buffer, type: "write" }),
             catch: () => "TODO_OPFSWriteError" as const,
           });
 

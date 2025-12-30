@@ -18,6 +18,7 @@
         "@tailwindcss/vite": "^4.1.18",
         "astro": "^5.16.5",
         "astrojs-service-worker": "^2.0.0",
+        "content-range": "^2.0.2",
         "effect": "^3.19.9",
         "eslint-plugin-better-tailwindcss": "^3.8.0",
         "hugeicons-react": "^0.3.0",
@@ -772,6 +773,8 @@
     "common-tags": ["common-tags@1.8.2", "", {}, "sha512-gk/Z852D2Wtb//0I+kRFNKKE9dIIVirjoqPoA1wJU+XePVXZfGeBpk45+A1rKO4Q43prqWBNY/MiIeRLbPWUaA=="],
 
     "concat-map": ["concat-map@0.0.1", "", {}, "sha512-/Srv4dswyQNBfohGpz9o6Yb3Gz3SrUDqBH5rTuhGR7ahtlbYKnVxw2bCFMRljaA7EXHaXZ8wsHdodFvbkhKmqg=="],
+
+    "content-range": ["content-range@2.0.2", "", {}, "sha512-ayHd/VQMRfWFBLVXyYvNhbbR+vq5OgLJnViGV4arzQiX9odRhf1spmXF7pFEHiR8htli29Hbii0URCNfUTN4vQ=="],
 
     "convert-source-map": ["convert-source-map@2.0.0", "", {}, "sha512-Kvp459HrV2FEJ1CAsi1Ku+MY3kasH19TFykTz2xWmMeq6bk2NU3XXvfJ+Q61m0xktWwt+1HSYf3JZsTms3aRJg=="],
 

@@ -54,15 +54,16 @@ export const GET: APIRoute = async ({ request, params }) => {
     const start = parseInt(parts[0], 10);
     const fileSize = file.size;
     const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
-    const chunkSize = end - start + 1;
 
-    return new Response(file.slice(start, end + 1), {
+    const slice = file.slice(start, end + 1);
+
+    return new Response(slice, {
       status: 206,
       headers: {
         "Content-Range": `bytes ${start}-${end}/${fileSize}`,
         "Accept-Ranges": "bytes",
-        "Content-Length": String(chunkSize),
-        "Content-Type": file.type || "video/mp4",
+        "Content-Length": String(slice.size),
+        "Content-Type": file.type,
       },
     });
   }
