@@ -7,12 +7,14 @@ import type { VideoInfo } from "@/schema/videos";
 import type { VideoDownloadStatus } from "@/schema/videos";
 import { EnhancedVideoInfo } from "@/schema/videos";
 import { LocalVideoService } from "../services/LocalVideoService";
+import { LocalBlobService } from "../services/LocalBlobService";
 import { DownloadClient } from "../services/DownloadClient";
 import { LocalVideoDownloadService } from "../services/LocalVideoDownloadService";
 
 const videosAtom = DownloadClient.query("GetVideos", void 0, { reactivityKeys: ["videos"] });
 const runtime = Atom.runtime(
   DownloadClient.layer.pipe(
+    Layer.merge(Layer.orDie(LocalBlobService.Default)),
     Layer.merge(Layer.orDie(LocalVideoService.Default)),
     Layer.merge(LocalVideoDownloadService.Default),
     Layer.provide(FetchHttpClient.layer),
@@ -68,7 +70,7 @@ const getDownloadProgressByIdAtom = Atom.family((id: string | null) => {
 const videoDownloadAtom = runtime.fn(Effect.serviceFunctions(LocalVideoDownloadService).download);
 const openLocalCopyAtom = runtime.fn((id: string) => {
   return Effect.gen(function* () {
-    const data = yield* Effect.serviceFunctions(LocalVideoService).getBlob(id);
+    const data = yield* Effect.serviceFunctions(LocalBlobService).get(id);
 
     if (Option.isSome(data)) {
       const blob = new Blob([data.value.buffer], { type: "video/mp4" });
