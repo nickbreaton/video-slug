@@ -11,6 +11,8 @@ import { DownloadStreamManager } from "@/server/services/DownloadStreamManager";
 import { VideoRepo } from "@/server/services/VideoRepo";
 import { VideoDirectoryService } from "@/server/services/VideoDirectoryService";
 import { DownloadGarbageCollecter } from "@/server/services/DownloadGarbageCollector";
+import { memoMap } from "@/server/memoMap";
+import { SqlLive } from "@/server/layers/SqlLive";
 
 const DownloadLive = DownloadRpcs.toLayer(
   Effect.gen(function* () {
@@ -43,14 +45,6 @@ const DownloadLive = DownloadRpcs.toLayer(
   }),
 );
 
-const SqlLive = Layer.unwrapEffect(
-  Effect.gen(function* () {
-    const { baseDir } = yield* VideoDirectoryService;
-    const path = yield* Path.Path;
-    return SqliteClient.layer({ filename: path.resolve(baseDir, "videos.db") });
-  }),
-);
-
 const RpcLive = Layer.mergeAll(
   DownloadLive,
   RpcSerialization.layerNdjson,
@@ -65,7 +59,7 @@ const RpcLive = Layer.mergeAll(
   Layer.provide(BunContext.layer),
 );
 
-const { handler } = RpcServer.toWebHandler(DownloadRpcs, { layer: RpcLive });
+const { handler } = RpcServer.toWebHandler(DownloadRpcs, { layer: RpcLive, memoMap });
 
 export const POST: APIRoute = async ({ request }) => {
   return handler(request);
