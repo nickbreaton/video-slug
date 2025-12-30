@@ -1,75 +1,60 @@
 import { Effect, Option } from "effect";
-import { IndexedDBReadError, IndexedDBService, IndexedDBWriteError } from "./IndexedDBService";
 
 export class LocalBlobService extends Effect.Service<LocalBlobService>()("LocalBlobService", {
-  dependencies: [IndexedDBService.Default],
+  dependencies: [],
   effect: Effect.gen(function* () {
-    const db = yield* IndexedDBService;
+    const root = yield* Effect.tryPromise({
+      try: () => navigator.storage.getDirectory(),
+      catch: () => "TODO_OPFSInitializationError" as const,
+    });
+
+    const directory = yield* Effect.tryPromise({
+      try: () => root.getDirectoryHandle("videos", { create: true }),
+      catch: () => "TODO_OPFSInitializationError" as const,
+    });
 
     return {
-      set: (id: string, blob: Uint8Array): Effect.Effect<void, IndexedDBWriteError> =>
-        Effect.async((resume) => {
-          console.log(id, blob);
-          const transaction = db.transaction("blobs", "readwrite");
-          const store = transaction.objectStore("blobs");
-
-          store.put({ id, blob });
-
-          transaction.oncomplete = () => resume(Effect.void);
-          transaction.onerror = () => resume(Effect.fail(new IndexedDBWriteError({ cause: transaction.error })));
-        }),
-
-      get: (id: string): Effect.Effect<Option.Option<Uint8Array<ArrayBuffer>>, IndexedDBReadError> =>
-        Effect.async((resume) => {
-          const transaction = db.transaction("blobs", "readonly");
-          const store = transaction.objectStore("blobs");
-          const request = store.get(id);
-
-          request.onsuccess = () => {
-            const record = request.result;
-            if (record?.blob) {
-              resume(Effect.succeed(Option.some(record.blob)));
-            } else {
-              resume(Effect.succeed(Option.none()));
-            }
-          };
-          request.onerror = () => resume(Effect.fail(new IndexedDBReadError({ cause: request.error })));
-        }),
-
-      garbageCollect: (validIds: string[]): Effect.Effect<void, IndexedDBWriteError | IndexedDBReadError> =>
+      set: (id: string, blob: Blob) =>
         Effect.gen(function* () {
-          const validIdSet = new Set(validIds);
-
-          // Get all blob IDs currently stored
-          const storedIds = yield* Effect.async<string[], IndexedDBReadError>((resume) => {
-            const transaction = db.transaction("blobs", "readonly");
-            const store = transaction.objectStore("blobs");
-            const request = store.getAllKeys();
-
-            request.onsuccess = () => {
-              resume(Effect.succeed(request.result as string[]));
-            };
-            request.onerror = () => resume(Effect.fail(new IndexedDBReadError({ cause: request.error })));
+          const writable = yield* Effect.tryPromise({
+            try: () =>
+              directory
+                .getFileHandle(id, { create: true })
+                .then((file) => file.createWritable({ keepExistingData: false })), // TODO: change to true and do chunk by chunk
+            catch: () => "TODO_OPFSWriteError" as const,
           });
 
-          // Find IDs to delete (those not in validIds)
-          const idsToDelete = storedIds.filter((id) => !validIdSet.has(id));
+          yield* Effect.tryPromise({
+            try: () => writable.write(blob),
+            catch: () => "TODO_OPFSWriteError" as const,
+          });
 
-          if (idsToDelete.length === 0) return;
-
-          // Delete invalid blobs
-          yield* Effect.async<void, IndexedDBWriteError>((resume) => {
-            const transaction = db.transaction("blobs", "readwrite");
-            const store = transaction.objectStore("blobs");
-
-            for (const id of idsToDelete) {
-              store.delete(id);
-            }
-
-            transaction.oncomplete = () => resume(Effect.void);
-            transaction.onerror = () => resume(Effect.fail(new IndexedDBWriteError({ cause: transaction.error })));
+          yield* Effect.tryPromise({
+            try: () => writable.close(),
+            catch: () => "TODO_OPFSWriteError" as const,
           });
         }),
+
+      get: (id: string) =>
+        Effect.gen(function* () {
+          const fileHandle = yield* Effect.tryPromise(() => directory.getFileHandle(id)).pipe(
+            Effect.map((value) => Option.some(value)),
+            Effect.catchAll(() => Option.none()),
+          );
+
+          if (!Option.isSome(fileHandle)) {
+            return Option.none();
+          }
+
+          const file: Blob = yield* Effect.tryPromise({
+            try: () => fileHandle.value.getFile(),
+            catch: () => "TODO_OPFSReadError" as const,
+          });
+
+          return Option.some(file);
+        }),
+
+      garbageCollect: (validIds: string[]) => Effect.gen(function* () {}),
     };
   }),
 }) {}

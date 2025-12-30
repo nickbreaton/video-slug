@@ -73,8 +73,7 @@ const openLocalCopyAtom = runtime.fn((id: string) => {
     const data = yield* Effect.serviceFunctions(LocalBlobService).get(id);
 
     if (Option.isSome(data)) {
-      const blob = new Blob([data.value.buffer], { type: "video/mp4" });
-      const url = URL.createObjectURL(blob);
+      const url = URL.createObjectURL(data.value);
       window.open(url, "_blank");
     }
   });
