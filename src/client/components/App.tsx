@@ -31,6 +31,7 @@ const StoredVideo = Schema.Struct({
   id: Schema.String,
   index: Schema.Number,
   data: EnhancedVideoInfo,
+  blob: Schema.optionalWith(Schema.Uint8ArrayFromSelf, { as: "Option" }),
 });
 
 const StoredVideos = Schema.Array(StoredVideo);
@@ -56,15 +57,58 @@ class LocalVideoService extends Effect.Service<LocalVideoService>()("LocalVideoS
     const db = yield* openDatabase();
 
     return {
-      set: (videos: EnhancedVideoInfo[]): Effect.Effect<void, IndexedDBWriteError> =>
+      set: (videos: EnhancedVideoInfo[]): Effect.Effect<void, IndexedDBWriteError | IndexedDBReadError> =>
+        Effect.gen(function* () {
+          // First, read existing records to preserve blobs
+          const existingBlobs = yield* Effect.async<Map<string, Uint8Array>, IndexedDBReadError>((resume) => {
+            const transaction = db.transaction("videos", "readonly");
+            const store = transaction.objectStore("videos");
+            const request = store.getAll();
+
+            request.onsuccess = () => {
+              const blobMap = new Map<string, Uint8Array>();
+              for (const record of request.result) {
+                if (record.blob) blobMap.set(record.id, record.blob);
+              }
+              resume(Effect.succeed(blobMap));
+            };
+            request.onerror = () => resume(Effect.fail(new IndexedDBReadError({ cause: request.error })));
+          });
+
+          // Now write with preserved blobs
+          yield* Effect.async<void, IndexedDBWriteError>((resume) => {
+            const transaction = db.transaction("videos", "readwrite");
+            const store = transaction.objectStore("videos");
+
+            store.clear();
+            videos.forEach((video, index) => {
+              const existingBlob = existingBlobs.get(video.info.id);
+              store.put({
+                id: video.info.id,
+                index,
+                data: video,
+                blob: existingBlob,
+              });
+            });
+
+            transaction.oncomplete = () => resume(Effect.void);
+            transaction.onerror = () => resume(Effect.fail(new IndexedDBWriteError({ cause: transaction.error })));
+          });
+        }),
+
+      setBlob: (id: string, blob: Uint8Array): Effect.Effect<void, IndexedDBWriteError | IndexedDBReadError> =>
         Effect.async((resume) => {
           const transaction = db.transaction("videos", "readwrite");
           const store = transaction.objectStore("videos");
+          const getRequest = store.get(id);
 
-          store.clear();
-          videos.forEach((video, index) => {
-            store.put({ id: video.info.id, index, data: video });
-          });
+          getRequest.onsuccess = () => {
+            const existing = getRequest.result;
+            if (existing) {
+              existing.blob = blob;
+              store.put(existing);
+            }
+          };
 
           transaction.oncomplete = () => resume(Effect.void);
           transaction.onerror = () => resume(Effect.fail(new IndexedDBWriteError({ cause: transaction.error })));
@@ -103,13 +147,18 @@ class DownloadClient extends AtomRpc.Tag<DownloadClient>()("DownloadClient", {
 }) {}
 
 class LocalVideoDownloadService extends Effect.Service<LocalVideoDownloadService>()("LocalVideoDownloadService", {
+  dependencies: [LocalVideoService.Default],
   effect: Effect.gen(function* () {
     const httpClient = yield* HttpClient.HttpClient;
+    const localVideoService = yield* LocalVideoService;
 
     const download = Effect.fn(function* (id: string) {
+      // TODO: Consider storage quota checks before storing large video blobs
       const response = yield* httpClient.get(`/api/videos/${id}`);
       const buffer = yield* response.arrayBuffer;
-      console.log(buffer);
+      const blob = new Uint8Array(buffer);
+
+      yield* localVideoService.setBlob(id, blob);
     });
 
     return { download };
