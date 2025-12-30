@@ -1,6 +1,6 @@
 import { FetchHttpClient } from "@effect/platform";
 import { RpcClient, RpcSerialization } from "@effect/rpc";
-import { Console, Effect, Layer, Option, Stream } from "effect";
+import { Data, Effect, Layer, Option, ParseResult, Schema, Stream } from "effect";
 import { Atom, useAtomValue, useAtomSet, AtomRpc, Result } from "@effect-atom/atom-react";
 import { DownloadRpcs } from "@/schema/rpc/download";
 import { Add01Icon, VideoReplayIcon } from "hugeicons-react";
@@ -9,14 +9,86 @@ import type { VideoInfo } from "@/schema/videos";
 import type { VideoDownloadStatus } from "@/schema/videos";
 import { EnhancedVideoInfo } from "@/schema/videos";
 
+// IndexedDB Error Types
+class IndexedDBOpenError extends Data.TaggedError("IndexedDBOpenError")<{
+  cause: unknown;
+}> {}
+
+class IndexedDBReadError extends Data.TaggedError("IndexedDBReadError")<{
+  cause: unknown;
+}> {}
+
+class IndexedDBWriteError extends Data.TaggedError("IndexedDBWriteError")<{
+  cause: unknown;
+}> {}
+
+class IndexedDBParseError extends Data.TaggedError("IndexedDBParseError")<{
+  cause: ParseResult.ParseError;
+}> {}
+
+// Schema for stored records
+const StoredVideo = Schema.Struct({
+  id: Schema.String,
+  index: Schema.Number,
+  data: EnhancedVideoInfo,
+});
+
+const StoredVideos = Schema.Array(StoredVideo);
+
+// Helper to open IndexedDB
+const openDatabase = (): Effect.Effect<IDBDatabase, IndexedDBOpenError> =>
+  Effect.async((resume) => {
+    const request = indexedDB.open("dlp-ui", 1);
+
+    request.onupgradeneeded = () => {
+      const db = request.result;
+      if (!db.objectStoreNames.contains("videos")) {
+        db.createObjectStore("videos", { keyPath: "id" });
+      }
+    };
+
+    request.onsuccess = () => resume(Effect.succeed(request.result));
+    request.onerror = () => resume(Effect.fail(new IndexedDBOpenError({ cause: request.error })));
+  });
+
 class LocalVideoService extends Effect.Service<LocalVideoService>()("LocalVideoService", {
   effect: Effect.gen(function* () {
+    const db = yield* openDatabase();
+
     return {
-      writeCache: (value: EnhancedVideoInfo[]) =>
-        Effect.sync(() => localStorage.setItem("videos", JSON.stringify(value))),
-      readCache: (): Effect.Effect<Option.Option<EnhancedVideoInfo[]>> =>
-        Effect.sync(() =>
-          Option.fromNullable(localStorage.getItem("videos")).pipe(Option.map((value) => JSON.parse(value))),
+      set: (videos: EnhancedVideoInfo[]): Effect.Effect<void, IndexedDBWriteError> =>
+        Effect.async((resume) => {
+          const transaction = db.transaction("videos", "readwrite");
+          const store = transaction.objectStore("videos");
+
+          store.clear();
+          videos.forEach((video, index) => {
+            store.put({ id: video.info.id, index, data: video });
+          });
+
+          transaction.oncomplete = () => resume(Effect.void);
+          transaction.onerror = () => resume(Effect.fail(new IndexedDBWriteError({ cause: transaction.error })));
+        }),
+
+      get: (): Effect.Effect<Option.Option<EnhancedVideoInfo[]>, IndexedDBReadError | IndexedDBParseError> =>
+        Effect.async<unknown[], IndexedDBReadError>((resume) => {
+          const transaction = db.transaction("videos", "readonly");
+          const store = transaction.objectStore("videos");
+          const request = store.getAll();
+
+          request.onsuccess = () => resume(Effect.succeed(request.result));
+          request.onerror = () => resume(Effect.fail(new IndexedDBReadError({ cause: request.error })));
+        }).pipe(
+          Effect.flatMap((records) =>
+            Schema.decodeUnknown(StoredVideos)(records).pipe(
+              Effect.mapError((cause) => new IndexedDBParseError({ cause })),
+            ),
+          ),
+          Effect.map((records) => {
+            const sorted = records.toSorted((a, b) => a.index - b.index);
+            const videos = sorted.map((r) => r.data);
+            return videos.length === 0 ? Option.none() : Option.some(videos);
+          }),
         ),
     };
   }),
@@ -31,18 +103,18 @@ class DownloadClient extends AtomRpc.Tag<DownloadClient>()("DownloadClient", {
 }) {}
 
 const videosAtom = DownloadClient.query("GetVideos", void 0, { reactivityKeys: ["videos"] });
-const runtime = Atom.runtime(DownloadClient.layer.pipe(Layer.merge(LocalVideoService.Default)));
+const runtime = Atom.runtime(DownloadClient.layer.pipe(Layer.merge(Layer.orDie(LocalVideoService.Default))));
 
 const cachedVideosAtom = runtime.atom((get) => {
   return Effect.gen(function* () {
-    const service = yield* LocalVideoService;
-    const cache = yield* service.readCache();
+    const localVideoService = yield* LocalVideoService;
+    const cache = yield* localVideoService.get();
 
     const cacheStream = Option.isSome(cache) ? Stream.make(cache.value) : Stream.empty;
 
     const serverStream = get.streamResult(videosAtom).pipe(
       Stream.tap((value) => {
-        return service.writeCache(value as EnhancedVideoInfo[]);
+        return localVideoService.set(value as EnhancedVideoInfo[]);
       }),
       Stream.catchAll(() => {
         console.log("TODO: Throw a toast or something to inform user of error but still keep online working well");
