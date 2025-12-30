@@ -1,4 +1,4 @@
-import { FetchHttpClient } from "@effect/platform";
+import { FetchHttpClient, HttpClient } from "@effect/platform";
 import { RpcClient, RpcSerialization } from "@effect/rpc";
 import { Data, Effect, Layer, Option, ParseResult, Schema, Stream } from "effect";
 import { Atom, useAtomValue, useAtomSet, AtomRpc, Result } from "@effect-atom/atom-react";
@@ -102,8 +102,28 @@ class DownloadClient extends AtomRpc.Tag<DownloadClient>()("DownloadClient", {
   ),
 }) {}
 
+class LocalVideoDownloadService extends Effect.Service<LocalVideoDownloadService>()("LocalVideoDownloadService", {
+  effect: Effect.gen(function* () {
+    const httpClient = yield* HttpClient.HttpClient;
+
+    const download = Effect.fn(function* (id: string) {
+      const response = yield* httpClient.get(`/api/videos/${id}`);
+      const buffer = yield* response.arrayBuffer;
+      console.log(buffer);
+    });
+
+    return { download };
+  }),
+}) {}
+
 const videosAtom = DownloadClient.query("GetVideos", void 0, { reactivityKeys: ["videos"] });
-const runtime = Atom.runtime(DownloadClient.layer.pipe(Layer.merge(Layer.orDie(LocalVideoService.Default))));
+const runtime = Atom.runtime(
+  DownloadClient.layer.pipe(
+    Layer.merge(Layer.orDie(LocalVideoService.Default)),
+    Layer.merge(LocalVideoDownloadService.Default),
+    Layer.provide(FetchHttpClient.layer),
+  ),
+);
 
 const cachedVideosAtom = runtime.atom((get) => {
   return Effect.gen(function* () {
@@ -151,11 +171,16 @@ const getDownloadProgressByIdAtom = Atom.family((id: string | null) => {
   );
 });
 
+const videoDownloadAtom = runtime.fn(Effect.serviceFunctions(LocalVideoDownloadService).download);
+
 function DownloadLineItem({ video, status }: { video: VideoInfo; status: VideoDownloadStatus }) {
   const result = useAtomValue(getDownloadProgressByIdAtom(status === "downloading" ? video.id : null));
+  const download = useAtomSet(videoDownloadAtom);
+
   return (
     <li>
       {video.title} <span className="text-neutral-10">({status})</span>
+      {status === "complete" && <button onClick={async () => download(video.id)}>Download</button>}
       <div>
         {result._tag === "Success" && (
           <span>
