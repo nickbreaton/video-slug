@@ -1,8 +1,13 @@
 import { Headers, HttpClient } from "@effect/platform";
-import { Console, Effect, Fiber, Option, Ref, Stream, SubscriptionRef } from "effect";
+import { Data, Effect, Fiber, Option, Ref, Stream, SubscriptionRef } from "effect";
 import { LocalBlobWriterService } from "./LocalBlobWriterService";
 import { parse as parseContentRange } from "content-range";
 import { LocalBlobService } from "../services/LocalBlobService";
+
+// Cloneable error for crossing worker boundary
+export class VideoDownloadError extends Data.TaggedError("VideoDownloadError")<{
+  readonly reason: string;
+}> {}
 
 export class LocalVideoDownloadService extends Effect.Service<LocalVideoDownloadService>()(
   "LocalVideoDownloadService",
@@ -27,11 +32,16 @@ export class LocalVideoDownloadService extends Effect.Service<LocalVideoDownload
 
           const [response] = yield* Effect.all(
             [
-              httpClient.get(`/api/videos/${id}`, {
-                headers: {
-                  Range: `bytes=${progressValue}-${progressValue + chunkSize}`,
-                },
-              }),
+              httpClient
+                .get(`/api/videos/${id}`, {
+                  headers: {
+                    Range: `bytes=${progressValue}-${progressValue + chunkSize}`,
+                  },
+                })
+                .pipe(
+                  // Convert non-cloneable HttpClientError to cloneable VideoDownloadError
+                  Effect.mapError((error) => new VideoDownloadError({ reason: error.message })),
+                ),
               prevWriteFiber ? Fiber.join(prevWriteFiber) : Effect.void,
             ],
             { concurrency: "unbounded" },
@@ -40,20 +50,23 @@ export class LocalVideoDownloadService extends Effect.Service<LocalVideoDownload
           const contentRangeHeader = Headers.get(response.headers, "Content-Range");
 
           if (Option.isNone(contentRangeHeader)) {
-            return yield* Effect.dieMessage("Missing content-range header");
+            return yield* Effect.fail(new VideoDownloadError({ reason: "Missing content-range header" }));
           }
 
           const contentRange = parseContentRange(contentRangeHeader.value);
-          const buffer = yield* response.arrayBuffer;
+          const buffer = yield* response.arrayBuffer.pipe(
+            Effect.mapError((error) => new VideoDownloadError({ reason: error.message })),
+          );
 
-          // Write chunk after next network call to avoid blocking thread before initiating request
-          prevWriteFiber = yield* Effect.fork(writeHandle.write(progressValue, buffer));
+          yield* writeHandle.write(progressValue, buffer);
 
-          const nextProgress = contentRange?.end ?? 0;
+          // end is inclusive (last byte index), so next position is end + 1
+          const nextProgress = (contentRange?.end ?? 0) + 1;
+          const totalSize = contentRange?.size ?? 0;
 
           yield* Ref.set(progress, nextProgress);
 
-          if (nextProgress >= (contentRange?.size ?? 0)) {
+          if (nextProgress >= totalSize) {
             break;
           }
         }

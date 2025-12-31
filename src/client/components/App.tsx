@@ -100,10 +100,7 @@ const videoDownloadAtom = runtime.fn((id: string) => {
 
     // TODO: need to report progress across thread
     yield* pool.execute(id).pipe(
-      Stream.runForEach((progress) => {
-        console.log(`Download progress for ${id}: ${progress}`);
-        return Reactivity.invalidate(["download", id]);
-      }),
+      Stream.runForEach(() => Reactivity.invalidate(["download", id])),
     );
 
     const blob = yield* localBlobService.get(id);

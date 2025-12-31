@@ -55,7 +55,8 @@ export const GET: APIRoute = async ({ request, params }) => {
   if (range) {
     const parts = range.replace(/bytes=/, "").split("-");
     const start = parseInt(parts[0], 10);
-    const end = Math.min(parts[1] ? parseInt(parts[1], 10) : fileSize, fileSize);
+    // end is inclusive, so max valid byte is fileSize - 1
+    const end = Math.min(parts[1] ? parseInt(parts[1], 10) : fileSize - 1, fileSize - 1);
 
     const stream = createReadStream(videoFilePath, { start, end: end });
     const webStream = Readable.toWeb(stream) as unknown as ReadableStream;
@@ -65,7 +66,7 @@ export const GET: APIRoute = async ({ request, params }) => {
       headers: {
         "Content-Range": `bytes ${start}-${end}/${fileSize}`,
         "Accept-Ranges": "bytes",
-        "Content-Length": String(end - start),
+        "Content-Length": String(end - start + 1),
         "Content-Type": mimeType,
       },
     });
