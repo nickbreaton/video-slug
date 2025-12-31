@@ -1,4 +1,4 @@
-import { FetchHttpClient } from "@effect/platform";
+import { FetchHttpClient, Worker } from "@effect/platform";
 import { Effect, Layer, Option, Stream } from "effect";
 import { Atom, useAtomValue, useAtomSet } from "@effect-atom/atom-react";
 import { Add01Icon } from "hugeicons-react";
@@ -7,17 +7,23 @@ import type { VideoInfo } from "@/schema/videos";
 import type { VideoDownloadStatus } from "@/schema/videos";
 import { EnhancedVideoInfo } from "@/schema/videos";
 import { LocalVideoService } from "../services/LocalVideoService";
-import { LocalBlobService } from "../services/LocalBlobService";
 import { DownloadClient } from "../services/DownloadClient";
-import { LocalVideoDownloadService } from "../services/LocalVideoDownloadService";
+import { BrowserWorker } from "@effect/platform-browser";
 
 const videosAtom = DownloadClient.query("GetVideos", void 0, { reactivityKeys: ["videos"] });
 const runtime = Atom.runtime(
   DownloadClient.layer.pipe(
-    Layer.merge(Layer.orDie(LocalBlobService.Default)),
     Layer.merge(Layer.orDie(LocalVideoService.Default)),
-    Layer.merge(LocalVideoDownloadService.Default),
     Layer.provide(FetchHttpClient.layer),
+    Layer.merge(
+      // ✅ Vite-compatible worker creation
+      BrowserWorker.layer(
+        () =>
+          new globalThis.Worker(new URL("../worker/main.ts", import.meta.url), {
+            type: "module",
+          }),
+      ),
+    ),
   ),
 );
 
@@ -67,15 +73,19 @@ const getDownloadProgressByIdAtom = Atom.family((id: string | null) => {
   );
 });
 
-const videoDownloadAtom = runtime.fn(Effect.serviceFunctions(LocalVideoDownloadService).download);
-const openLocalCopyAtom = runtime.fn((id: string) => {
+const videoDownloadAtom = runtime.fn((id: string) => {
   return Effect.gen(function* () {
-    const data = yield* Effect.serviceFunctions(LocalBlobService).get(id);
+    const pool = yield* Worker.makePool<string, string, never>({
+      size: 1,
+    });
 
-    if (Option.isSome(data)) {
-      const url = URL.createObjectURL(data.value);
-      window.open(url, "_blank");
-    }
+    const src = yield* pool.executeEffect(id);
+
+    // TMP
+    const video = document.createElement("video");
+    video.controls = true;
+    document.body.appendChild(video);
+    video.src = src;
   });
 });
 
@@ -84,16 +94,13 @@ function DownloadLineItem({ video, status }: { video: VideoInfo; status: VideoDo
   const downloadToLocal = useAtomSet(videoDownloadAtom, {
     mode: "promise",
   });
-  const openLocalCopy = useAtomSet(openLocalCopyAtom);
 
   return (
     <li>
       {video.title} <span className="text-neutral-10">({status})</span>
       {status === "complete" && (
-        <div className="border border-neutral-6 p-2 inline-block">
+        <div className="inline-block border border-neutral-6 p-2">
           <button onClick={async () => downloadToLocal(video.id).then(console.log, console.error)}>Download</button>
-          {" • "}
-          <button onClick={async () => openLocalCopy(video.id)}>Open</button>
         </div>
       )}
       <div>

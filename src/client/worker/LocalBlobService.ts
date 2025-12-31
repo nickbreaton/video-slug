@@ -14,25 +14,34 @@ export class LocalBlobService extends Effect.Service<LocalBlobService>()("LocalB
     });
 
     return {
-      write: (id: string, offset: number, buffer: ArrayBuffer) =>
+      createWriteHandle: (id: string) =>
         Effect.gen(function* () {
-          const writable = yield* Effect.tryPromise({
-            try: () =>
-              directory
-                .getFileHandle(id, { create: true })
-                .then((file) => file.createWritable({ keepExistingData: true })),
-            catch: () => "TODO_OPFSWriteError" as const,
+          const fileHandle = yield* Effect.tryPromise({
+            try: () => directory.getFileHandle(id, { create: true }),
+            catch: () => "TODO" as const,
           });
 
-          yield* Effect.tryPromise({
-            try: () => writable.write({ position: offset, data: buffer, type: "write" }),
-            catch: () => "TODO_OPFSWriteError" as const,
+          const accessHandle = yield* Effect.tryPromise({
+            try: () => fileHandle.createSyncAccessHandle(),
+            catch: () => "TODO" as const,
           });
 
-          yield* Effect.tryPromise({
-            try: () => writable.close(),
-            catch: () => "TODO_OPFSWriteError" as const,
+          yield* Effect.addFinalizer(() => {
+            return Effect.sync(() => accessHandle.close());
           });
+
+          return {
+            write: (offset: number, buffer: ArrayBuffer) =>
+              Effect.try({
+                try: () => {
+                  accessHandle.write(buffer, { at: offset });
+                  accessHandle.flush();
+                },
+                catch: () => "TODO_OPFSWriteError" as const,
+              }),
+
+            fileHandle,
+          };
         }),
 
       get: (id: string) =>

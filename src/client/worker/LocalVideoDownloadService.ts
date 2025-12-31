@@ -14,9 +14,10 @@ export class LocalVideoDownloadService extends Effect.Service<LocalVideoDownload
       const download = Effect.fn(function* (id: string) {
         // TODO: Consider storage quota checks before storing large video blobs
 
-        const chunkSize = 1024 * 1024 * 5; // 5 MB
+        const chunkSize = 1024 * 1024 * 25; // 25 MB
 
         let offset = 0;
+        const writeHandle = yield* localBlobService.createWriteHandle(id);
 
         while (true) {
           const response = yield* httpClient.get(`/api/videos/${id}`, {
@@ -34,7 +35,8 @@ export class LocalVideoDownloadService extends Effect.Service<LocalVideoDownload
           const contentRange = parseContentRange(contentRangeHeader.value);
           const buffer = yield* response.arrayBuffer;
 
-          yield* localBlobService.write(id, offset, buffer);
+          yield* writeHandle.write(offset, buffer);
+
           offset = contentRange?.end ?? 0;
 
           if (!contentRange || (contentRange.end ?? 0) >= (contentRange.size ?? 0)) {
@@ -42,15 +44,8 @@ export class LocalVideoDownloadService extends Effect.Service<LocalVideoDownload
           }
         }
 
-        // TMP
-        const blob = yield* localBlobService.get(id);
-
-        if (Option.isSome(blob)) {
-          const video = document.createElement("video");
-          video.controls = true;
-          document.body.appendChild(video);
-          video.src = URL.createObjectURL(blob.value);
-        }
+        const blob = yield* Effect.promise(() => writeHandle.fileHandle.getFile());
+        return URL.createObjectURL(blob);
 
         // const blob = new Blob(buffer);
       });
