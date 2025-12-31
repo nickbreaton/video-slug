@@ -1,5 +1,5 @@
 import { Headers, HttpClient } from "@effect/platform";
-import { Effect, Option } from "effect";
+import { Effect, Fiber, Option } from "effect";
 import { LocalBlobService } from "./LocalBlobService";
 import { parse as parseContentRange } from "content-range";
 
@@ -14,17 +14,22 @@ export class LocalVideoDownloadService extends Effect.Service<LocalVideoDownload
       const download = Effect.fn(function* (id: string) {
         // TODO: Consider storage quota checks before storing large video blobs
 
-        const chunkSize = 1024 * 1024 * 25; // 25 MB
+        const chunkSize = 1024 * 1024 * 10; // 10 MB
 
         let offset = 0;
+        let prevWriteFiber: Fiber.Fiber<void, "TODO_OPFSWriteError"> | undefined;
+
         const writeHandle = yield* localBlobService.createWriteHandle(id);
 
         while (true) {
-          const response = yield* httpClient.get(`/api/videos/${id}`, {
-            headers: {
-              Range: `bytes=${offset}-${offset + chunkSize}`,
-            },
-          });
+          const [response] = yield* Effect.all([
+            httpClient.get(`/api/videos/${id}`, {
+              headers: {
+                Range: `bytes=${offset}-${offset + chunkSize}`,
+              },
+            }),
+            prevWriteFiber ? Fiber.join(prevWriteFiber) : Effect.void,
+          ]);
 
           const contentRangeHeader = Headers.get(response.headers, "Content-Range");
 
@@ -35,7 +40,8 @@ export class LocalVideoDownloadService extends Effect.Service<LocalVideoDownload
           const contentRange = parseContentRange(contentRangeHeader.value);
           const buffer = yield* response.arrayBuffer;
 
-          yield* writeHandle.write(offset, buffer);
+          // Write chunk after next network call to avoid blocking thread before initiating request
+          prevWriteFiber = yield* Effect.fork(writeHandle.write(offset, buffer));
 
           offset = contentRange?.end ?? 0;
 
@@ -43,6 +49,9 @@ export class LocalVideoDownloadService extends Effect.Service<LocalVideoDownload
             break;
           }
         }
+
+        // In case of not iterating again ensure previous has completed
+        if (prevWriteFiber) yield* Fiber.join(prevWriteFiber);
 
         const blob = yield* Effect.promise(() => writeHandle.fileHandle.getFile());
         return URL.createObjectURL(blob);
