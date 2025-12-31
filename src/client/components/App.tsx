@@ -74,18 +74,18 @@ const getDownloadProgressByIdAtom = Atom.family((id: string | null) => {
   );
 });
 
-const getIsDownloadedLocallyAtom = Atom.family((video: EnhancedVideoInfo) => {
+const getLocalDownloadProgressAtom = Atom.family((video: EnhancedVideoInfo) => {
   return runtime
     .atom(
       Effect.gen(function* () {
         const localBlobService = yield* LocalBlobService;
         const file = yield* localBlobService.get(video.info.id);
 
-        if (Option.isNone(file)) {
-          return false;
+        if (Option.isNone(file) || !video.totalBytes) {
+          return 0;
         }
 
-        return video.totalBytes === file.value.size;
+        return Math.round((file.value.size / video.totalBytes) * 100);
       }),
     )
     .pipe(Atom.withReactivity(["download", video.info.id]));
@@ -94,11 +94,18 @@ const getIsDownloadedLocallyAtom = Atom.family((video: EnhancedVideoInfo) => {
 const videoDownloadAtom = runtime.fn((id: string) => {
   return Effect.gen(function* () {
     const localBlobService = yield* LocalBlobService;
-    const pool = yield* Worker.makePool<string, void, never>({
+    const pool = yield* Worker.makePool<string, number, never>({
       size: 1,
     });
 
-    yield* pool.executeEffect(id);
+    // TODO: need to report progress across thread
+    yield* pool.execute(id).pipe(
+      Stream.runForEach((progress) => {
+        console.log(`Download progress for ${id}: ${progress}`);
+        return Reactivity.invalidate(["download", id]);
+      }),
+    );
+
     const blob = yield* localBlobService.get(id);
 
     if (Option.isSome(blob)) {
@@ -114,7 +121,7 @@ const videoDownloadAtom = runtime.fn((id: string) => {
 
 function DownloadLineItem({ video }: { video: EnhancedVideoInfo }) {
   const result = useAtomValue(getDownloadProgressByIdAtom(video.status === "downloading" ? video.info.id : null));
-  const isDownloadedLocally = useAtomValue(getIsDownloadedLocallyAtom(video));
+  const localDownloadProgressResult = useAtomValue(getLocalDownloadProgressAtom(video));
 
   const downloadToLocal = useAtomSet(videoDownloadAtom, {
     mode: "promise",
@@ -125,14 +132,14 @@ function DownloadLineItem({ video }: { video: EnhancedVideoInfo }) {
       {video.info.title} <span className="text-neutral-10">({video.status})</span>
       {video.status === "complete" && (
         <div className="inline-block border border-neutral-6 p-2">
-          {Result.match(isDownloadedLocally, {
+          {Result.match(localDownloadProgressResult, {
             onInitial: () => null,
             onSuccess: ({ value }) =>
-              value ? (
+              value === 100 ? (
                 <button onClick={async () => console.log("TODO: open")}>Open </button>
               ) : (
                 <button onClick={async () => downloadToLocal(video.info.id).then(console.log, console.error)}>
-                  Download
+                  {value ? `Downloading... (${value}%)` : "Download"}
                 </button>
               ),
             onFailure: (error) => JSON.stringify(error),
