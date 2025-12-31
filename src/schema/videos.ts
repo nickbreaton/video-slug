@@ -47,5 +47,7 @@ export type VideoDownloadStatus = typeof VideoDownloadStatus.Type;
 export const EnhancedVideoInfo = Schema.Struct({
   info: VideoInfo,
   status: VideoDownloadStatus,
+  totalBytes: Schema.optional(Schema.Number),
 });
+
 export type EnhancedVideoInfo = typeof EnhancedVideoInfo.Type;

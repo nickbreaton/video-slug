@@ -51,28 +51,30 @@ export class VideoRepo extends Effect.Service<VideoRepo>()("VideoRepo", {
       execute: (id) => sql`SELECT * FROM videos WHERE id = ${id}`,
     });
 
+    const enhanceVideo = Effect.fn(function* (video: VideoInfo) {
+      const filePath = path.join(videosDir, video.filename);
+
+      const hasFile = yield* fs.exists(filePath);
+      const hasStream = Option.isSome(downloadStreamManager.get(video.id));
+
+      const stat = hasFile ? Option.some(yield* fs.stat(filePath)) : Option.none();
+
+      const result: typeof EnhancedVideoInfo.Type = {
+        info: video,
+        status: hasFile ? "complete" : hasStream ? "downloading" : "error",
+        totalBytes: Option.map(stat, (s) => Number(s.size)).pipe(Option.getOrUndefined),
+      };
+
+      return result;
+    });
+
     return {
       insert: InsertVideoInfo.execute,
       getAll: () =>
         Effect.gen(function* () {
           const videos = yield* getAllVideos();
 
-          return yield* Effect.all(
-            videos.map(
-              Effect.fn(function* (video) {
-                const hasFile = yield* fs.exists(path.join(videosDir, video.filename));
-                const hasStream = Option.isSome(downloadStreamManager.get(video.id));
-
-                const result: typeof EnhancedVideoInfo.Type = {
-                  info: video,
-                  status: hasFile ? "complete" : hasStream ? "downloading" : "error",
-                };
-
-                return result;
-              }),
-            ),
-            { concurrency: "unbounded" },
-          );
+          return yield* Effect.all(videos.map(enhanceVideo), { concurrency: "unbounded" });
         }),
       getById: (id: string) =>
         Effect.gen(function* () {
@@ -82,16 +84,7 @@ export class VideoRepo extends Effect.Service<VideoRepo>()("VideoRepo", {
             return Option.none<typeof EnhancedVideoInfo.Type>();
           }
 
-          const video = videoOption.value;
-          const hasFile = yield* fs.exists(path.join(videosDir, video.filename));
-          const hasStream = Option.isSome(downloadStreamManager.get(video.id));
-
-          const result: typeof EnhancedVideoInfo.Type = {
-            info: video,
-            status: hasFile ? "complete" : hasStream ? "downloading" : "error",
-          };
-
-          return Option.some(result);
+          return Option.some(yield* enhanceVideo(videoOption.value));
         }),
     };
   }),
