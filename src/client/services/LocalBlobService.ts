@@ -35,6 +35,12 @@ export class LocalBlobService extends Effect.Service<LocalBlobService>()("LocalB
           return Option.some(file);
         }),
 
+      exists: (id: string) =>
+        Effect.promise(() => directory.getFileHandle(id, { create: false })).pipe(
+          Effect.as(true),
+          Effect.catchAllCause(() => Effect.succeed(false)),
+        ),
+
       garbageCollect: (validIds: string[]) =>
         Effect.gen(function* () {
           // TODO: implement this
