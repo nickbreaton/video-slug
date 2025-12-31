@@ -13,8 +13,9 @@ export class LocalVideoDownloadService extends Effect.Service<LocalVideoDownload
 
       const download = Effect.fn(function* (id: string) {
         // TODO: Consider storage quota checks before storing large video blobs
+        // TODO: Implement resumability – the total size likely needs to be stored to know if resuming is needed, along with gathering the offset from the current file size
 
-        const chunkSize = 1024 * 1024 * 5; // 10 MB
+        const chunkSize = 1024 * 1024 * 5; // 5 MB
 
         let offset = 0;
         let prevWriteFiber: Fiber.Fiber<void, "TODO_OPFSWriteError"> | undefined;
@@ -22,14 +23,17 @@ export class LocalVideoDownloadService extends Effect.Service<LocalVideoDownload
         const writeHandle = yield* localBlobWriterService.createWriteHandle(id);
 
         while (true) {
-          const [response] = yield* Effect.all([
-            httpClient.get(`/api/videos/${id}`, {
-              headers: {
-                Range: `bytes=${offset}-${offset + chunkSize}`,
-              },
-            }),
-            prevWriteFiber ? Fiber.join(prevWriteFiber) : Effect.void,
-          ]);
+          const [response] = yield* Effect.all(
+            [
+              httpClient.get(`/api/videos/${id}`, {
+                headers: {
+                  Range: `bytes=${offset}-${offset + chunkSize}`,
+                },
+              }),
+              prevWriteFiber ? Fiber.join(prevWriteFiber) : Effect.void,
+            ],
+            { concurrency: "unbounded" },
+          );
 
           const contentRangeHeader = Headers.get(response.headers, "Content-Range");
 
