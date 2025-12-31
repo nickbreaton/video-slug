@@ -45,6 +45,12 @@ export class VideoRepo extends Effect.Service<VideoRepo>()("VideoRepo", {
       execute: () => sql`SELECT * FROM videos`,
     });
 
+    const getVideoById = SqlSchema.findOne({
+      Request: Schema.String,
+      Result: VideoInfo,
+      execute: (id) => sql`SELECT * FROM videos WHERE id = ${id}`,
+    });
+
     return {
       insert: InsertVideoInfo.execute,
       getAll: () =>
@@ -67,6 +73,25 @@ export class VideoRepo extends Effect.Service<VideoRepo>()("VideoRepo", {
             ),
             { concurrency: "unbounded" },
           );
+        }),
+      getById: (id: string) =>
+        Effect.gen(function* () {
+          const videoOption = yield* getVideoById(id);
+
+          if (Option.isNone(videoOption)) {
+            return Option.none<typeof EnhancedVideoInfo.Type>();
+          }
+
+          const video = videoOption.value;
+          const hasFile = yield* fs.exists(path.join(videosDir, video.filename));
+          const hasStream = Option.isSome(downloadStreamManager.get(video.id));
+
+          const result: typeof EnhancedVideoInfo.Type = {
+            info: video,
+            status: hasFile ? "complete" : hasStream ? "downloading" : "error",
+          };
+
+          return Option.some(result);
         }),
     };
   }),

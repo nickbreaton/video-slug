@@ -14,7 +14,7 @@ export class LocalVideoDownloadService extends Effect.Service<LocalVideoDownload
       const download = Effect.fn(function* (id: string) {
         // TODO: Consider storage quota checks before storing large video blobs
 
-        const chunkSize = 1024 * 1024 * 10; // 10 MB
+        const chunkSize = 1024 * 1024 * 5; // 10 MB
 
         let offset = 0;
         let prevWriteFiber: Fiber.Fiber<void, "TODO_OPFSWriteError"> | undefined;

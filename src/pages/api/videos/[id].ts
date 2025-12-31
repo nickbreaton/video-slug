@@ -1,5 +1,5 @@
 import type { APIRoute } from "astro";
-import { Effect, Layer, ManagedRuntime } from "effect";
+import { Effect, Layer, ManagedRuntime, Option } from "effect";
 
 import { memoMap } from "@/server/memoMap";
 import { VideoDirectoryService } from "@/server/services/VideoDirectoryService";
@@ -29,15 +29,13 @@ export const GET: APIRoute = async ({ request, params }) => {
       return yield* Effect.dieMessage("Missing video ID");
     }
 
-    // TODO: update to just query single video
-    const videos = yield* videoRepo.getAll();
-    const video = videos.find((video) => video.info.id === params["id"]);
+    const videoOption = yield* videoRepo.getById(params["id"]);
 
-    const filename = video?.info.filename;
-
-    if (!filename) {
+    if (Option.isNone(videoOption)) {
       return yield* Effect.dieMessage("Video not found");
     }
+
+    const filename = videoOption.value.info.filename;
 
     return path.join(videosDir, filename);
   });
