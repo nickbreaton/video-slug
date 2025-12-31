@@ -47,7 +47,7 @@ export const GET: APIRoute = async ({ request, params }) => {
   const videoFilePath = await runtime.runPromise(getVideoFilePath);
   const fileStat = await stat(videoFilePath);
   const fileSize = fileStat.size;
-  const mimeType = lookup(videoFilePath);
+  const mimeType = lookup(videoFilePath) || "video/mp4";
 
   // Handle Range requests for video streaming
   const range = request.headers.get("Range");
