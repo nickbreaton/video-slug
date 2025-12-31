@@ -29,6 +29,7 @@
     "effect": "^3.19.9",
     "eslint-plugin-better-tailwindcss": "^3.8.0",
     "hugeicons-react": "^0.3.0",
+    "mime-types": "^3.0.2",
     "react": "19.2.1",
     "react-dom": "19.2.1",
     "tailwind-merge": "^3.4.0",
@@ -37,6 +38,7 @@
   "devDependencies": {
     "@astrojs/check": "^0.9.6",
     "@effect/language-service": "^0.60.0",
+    "@types/mime-types": "^3.0.1",
     "@types/node": "^24.10.1",
     "@types/react": "^19.2.7",
     "@types/react-dom": "^19.2.3",

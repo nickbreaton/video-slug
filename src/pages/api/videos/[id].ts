@@ -3,6 +3,7 @@ import { Effect, Layer, ManagedRuntime, Option } from "effect";
 import { createReadStream } from "node:fs";
 import { stat } from "node:fs/promises";
 import { Readable } from "node:stream";
+import { lookup } from "mime-types";
 
 import { memoMap } from "@/server/memoMap";
 import { VideoDirectoryService } from "@/server/services/VideoDirectoryService";
@@ -46,6 +47,7 @@ export const GET: APIRoute = async ({ request, params }) => {
   const videoFilePath = await runtime.runPromise(getVideoFilePath);
   const fileStat = await stat(videoFilePath);
   const fileSize = fileStat.size;
+  const mimeType = lookup(videoFilePath);
 
   // Handle Range requests for video streaming
   const range = request.headers.get("Range");
@@ -64,7 +66,7 @@ export const GET: APIRoute = async ({ request, params }) => {
         "Content-Range": `bytes ${start}-${end}/${fileSize}`,
         "Accept-Ranges": "bytes",
         "Content-Length": String(end - start),
-        "Content-Type": "video/mp4",
+        "Content-Type": mimeType,
       },
     });
   }
@@ -75,7 +77,7 @@ export const GET: APIRoute = async ({ request, params }) => {
 
   return new Response(webStream, {
     headers: {
-      "Content-Type": "video/mp4",
+      "Content-Type": mimeType,
       "Accept-Ranges": "bytes",
       "Content-Length": String(fileSize),
     },
