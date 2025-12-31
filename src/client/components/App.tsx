@@ -91,18 +91,33 @@ const getLocalDownloadProgressAtom = Atom.family((video: EnhancedVideoInfo) => {
     .pipe(Atom.withReactivity(["download", video.info.id]));
 });
 
-const videoDownloadAtom = runtime.fn((id: string) => {
+const openLocalVideoAtom = runtime.fn((id: string) => {
   return Effect.gen(function* () {
     const localBlobService = yield* LocalBlobService;
+
+    const blob = yield* localBlobService.get(id);
+
+    if (Option.isSome(blob)) {
+      const video = document.createElement("video");
+      video.controls = true;
+      document.body.appendChild(video);
+      video.src = URL.createObjectURL(blob.value);
+    }
+
+    yield* Reactivity.invalidate(["download", id]);
+  });
+});
+
+const videoDownloadAtom = runtime.fn((id: string) => {
+  return Effect.gen(function* () {
     const pool = yield* Worker.makePool<string, number, never>({
       size: 1,
     });
 
     // TODO: need to report progress across thread
-    yield* pool.execute(id).pipe(
-      Stream.runForEach(() => Reactivity.invalidate(["download", id])),
-    );
+    yield* pool.execute(id).pipe(Stream.runForEach(() => Reactivity.invalidate(["download", id])));
 
+    const localBlobService = yield* LocalBlobService;
     const blob = yield* localBlobService.get(id);
 
     if (Option.isSome(blob)) {
@@ -120,6 +135,10 @@ function DownloadLineItem({ video }: { video: EnhancedVideoInfo }) {
   const result = useAtomValue(getDownloadProgressByIdAtom(video.status === "downloading" ? video.info.id : null));
   const localDownloadProgressResult = useAtomValue(getLocalDownloadProgressAtom(video));
 
+  const openLocalVideo = useAtomSet(openLocalVideoAtom, {
+    mode: "promise",
+  });
+
   const downloadToLocal = useAtomSet(videoDownloadAtom, {
     mode: "promise",
   });
@@ -133,7 +152,7 @@ function DownloadLineItem({ video }: { video: EnhancedVideoInfo }) {
             onInitial: () => null,
             onSuccess: ({ value }) =>
               value === 100 ? (
-                <button onClick={async () => console.log("TODO: open")}>Open </button>
+                <button onClick={async () => openLocalVideo(video.info.id)}>Open </button>
               ) : (
                 <button onClick={async () => downloadToLocal(video.info.id).then(console.log, console.error)}>
                   {value ? `Downloading... (${value}%)` : "Download"}
