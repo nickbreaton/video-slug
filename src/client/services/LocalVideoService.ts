@@ -1,6 +1,6 @@
 import { Data, Effect, Option, ParseResult, Schema } from "effect";
 import { EnhancedVideoInfo } from "@/schema/videos";
-// import { LocalBlobService } from "./LocalBlobService";
+// import { LocalBlobWriterService } from "./LocalBlobWriterService";
 import { KeyValueStore } from "@effect/platform";
 import { BrowserKeyValueStore } from "@effect/platform-browser";
 
@@ -9,7 +9,7 @@ export class LocalVideoService extends Effect.Service<LocalVideoService>()("Loca
   effect: Effect.gen(function* () {
     const kv = yield* KeyValueStore.KeyValueStore;
     const store = kv.forSchema(Schema.Array(EnhancedVideoInfo));
-    // const blobService = yield* LocalBlobService;
+    // const blobService = yield* LocalBlobWriterService;
 
     const key = "videos";
 

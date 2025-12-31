@@ -1,6 +1,6 @@
 import { Effect, Option } from "effect";
 
-export class LocalBlobService extends Effect.Service<LocalBlobService>()("LocalBlobService", {
+export class LocalBlobWriterService extends Effect.Service<LocalBlobWriterService>()("LocalBlobWriterService", {
   dependencies: [],
   effect: Effect.gen(function* () {
     const root = yield* Effect.tryPromise({

@@ -1,15 +1,15 @@
 import { Headers, HttpClient } from "@effect/platform";
 import { Effect, Fiber, Option } from "effect";
-import { LocalBlobService } from "./LocalBlobService";
+import { LocalBlobWriterService } from "./LocalBlobWriterService";
 import { parse as parseContentRange } from "content-range";
 
 export class LocalVideoDownloadService extends Effect.Service<LocalVideoDownloadService>()(
   "LocalVideoDownloadService",
   {
-    dependencies: [LocalBlobService.Default],
+    dependencies: [LocalBlobWriterService.Default],
     effect: Effect.gen(function* () {
       const httpClient = yield* HttpClient.HttpClient;
-      const localBlobService = yield* LocalBlobService;
+      const localBlobWriterService = yield* LocalBlobWriterService;
 
       const download = Effect.fn(function* (id: string) {
         // TODO: Consider storage quota checks before storing large video blobs
@@ -19,7 +19,7 @@ export class LocalVideoDownloadService extends Effect.Service<LocalVideoDownload
         let offset = 0;
         let prevWriteFiber: Fiber.Fiber<void, "TODO_OPFSWriteError"> | undefined;
 
-        const writeHandle = yield* localBlobService.createWriteHandle(id);
+        const writeHandle = yield* localBlobWriterService.createWriteHandle(id);
 
         while (true) {
           const [response] = yield* Effect.all([
