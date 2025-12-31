@@ -9,12 +9,14 @@ import { EnhancedVideoInfo } from "@/schema/videos";
 import { LocalVideoService } from "../services/LocalVideoService";
 import { DownloadClient } from "../services/DownloadClient";
 import { BrowserWorker } from "@effect/platform-browser";
+import { LocalBlobService } from "../services/LocalBlobService";
 
 const videosAtom = DownloadClient.query("GetVideos", void 0, { reactivityKeys: ["videos"] });
 const runtime = Atom.runtime(
   DownloadClient.layer.pipe(
     Layer.merge(Layer.orDie(LocalVideoService.Default)),
     Layer.provide(FetchHttpClient.layer),
+    Layer.provideMerge(LocalBlobService.Default),
     Layer.merge(
       // ✅ Vite-compatible worker creation
       BrowserWorker.layer(
@@ -75,18 +77,21 @@ const getDownloadProgressByIdAtom = Atom.family((id: string | null) => {
 
 const videoDownloadAtom = runtime.fn((id: string) => {
   return Effect.gen(function* () {
-    const pool = yield* Worker.makePool<string, string, never>({
+    const localBlobService = yield* LocalBlobService;
+    const pool = yield* Worker.makePool<string, void, never>({
       size: 1,
     });
 
-    const src = yield* pool.executeEffect(id);
+    yield* pool.executeEffect(id);
+    const blob = yield* localBlobService.get(id);
 
-    // TMP
-    const video = document.createElement("video");
-    video.controls = true;
-    document.body.appendChild(video);
-    video.src = src;
-  });
+    if (Option.isSome(blob)) {
+      const video = document.createElement("video");
+      video.controls = true;
+      document.body.appendChild(video);
+      video.src = URL.createObjectURL(blob.value);
+    }
+  }).pipe(Effect.scoped);
 });
 
 function DownloadLineItem({ video, status }: { video: VideoInfo; status: VideoDownloadStatus }) {

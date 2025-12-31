@@ -45,18 +45,13 @@ export class LocalVideoDownloadService extends Effect.Service<LocalVideoDownload
 
           offset = contentRange?.end ?? 0;
 
-          if (!contentRange || (contentRange.end ?? 0) >= (contentRange.size ?? 0)) {
+          if (offset >= (contentRange?.size ?? 0)) {
             break;
           }
         }
 
         // In case of not iterating again ensure previous has completed
         if (prevWriteFiber) yield* Fiber.join(prevWriteFiber);
-
-        const blob = yield* Effect.promise(() => writeHandle.fileHandle.getFile());
-        return URL.createObjectURL(blob);
-
-        // const blob = new Blob(buffer);
       });
 
       return { download };

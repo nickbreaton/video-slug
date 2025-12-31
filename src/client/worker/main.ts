@@ -7,7 +7,7 @@ import { FetchHttpClient } from "@effect/platform";
 const WorkerLive = Runner.layer((id: string) => {
   return Effect.gen(function* () {
     const downloadService = yield* LocalVideoDownloadService;
-    return yield* downloadService.download(id).pipe(Effect.scoped);
+    yield* downloadService.download(id).pipe(Effect.scoped);
   });
 }).pipe(
   Layer.provide(BrowserRunner.layer),
