@@ -2,18 +2,19 @@ import { Headers, HttpClient } from "@effect/platform";
 import { Console, Effect, Fiber, Option, Ref, Stream, SubscriptionRef } from "effect";
 import { LocalBlobWriterService } from "./LocalBlobWriterService";
 import { parse as parseContentRange } from "content-range";
+import { LocalBlobService } from "../services/LocalBlobService";
 
 export class LocalVideoDownloadService extends Effect.Service<LocalVideoDownloadService>()(
   "LocalVideoDownloadService",
   {
-    dependencies: [LocalBlobWriterService.Default],
+    dependencies: [LocalBlobWriterService.Default, LocalBlobService.Default],
     effect: Effect.gen(function* () {
       const httpClient = yield* HttpClient.HttpClient;
+      const localBlobService = yield* LocalBlobService;
       const localBlobWriterService = yield* LocalBlobWriterService;
 
       const download = Effect.fn(function* (id: string, progress: SubscriptionRef.SubscriptionRef<number>) {
         // TODO: Consider storage quota checks before storing large video blobs
-        // TODO: Implement resumability – the total size likely needs to be stored to know if resuming is needed, along with gathering the offset from the current file size
 
         const chunkSize = 1024 * 1024 * 5; // 5 MB
 
@@ -63,7 +64,10 @@ export class LocalVideoDownloadService extends Effect.Service<LocalVideoDownload
 
       const downloadStream = (id: string) =>
         Effect.gen(function* () {
-          const progress = yield* SubscriptionRef.make(0);
+          const blob = yield* localBlobService.get(id);
+          const initialProgress = Option.map(blob, (value) => value.size).pipe(Option.getOrElse(() => 0));
+
+          const progress = yield* SubscriptionRef.make(initialProgress);
 
           const fiber = yield* Effect.fork(download(id, progress));
 
