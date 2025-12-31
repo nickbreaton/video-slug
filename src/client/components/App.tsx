@@ -74,17 +74,21 @@ const getDownloadProgressByIdAtom = Atom.family((id: string | null) => {
   );
 });
 
-const getIsDownloadedLocallyAtom = Atom.family((id: string | null) => {
+const getIsDownloadedLocallyAtom = Atom.family((video: EnhancedVideoInfo) => {
   return runtime
     .atom(
-      id == null
-        ? Effect.succeed(false)
-        : Effect.gen(function* () {
-            const localBlobService = yield* LocalBlobService;
-            return yield* localBlobService.exists(id);
-          }),
+      Effect.gen(function* () {
+        const localBlobService = yield* LocalBlobService;
+        const file = yield* localBlobService.get(video.info.id);
+
+        if (Option.isNone(file)) {
+          return false;
+        }
+
+        return video.totalBytes === file.value.size;
+      }),
     )
-    .pipe(Atom.withReactivity(["download", id]));
+    .pipe(Atom.withReactivity(["download", video.info.id]));
 });
 
 const videoDownloadAtom = runtime.fn((id: string) => {
@@ -108,9 +112,9 @@ const videoDownloadAtom = runtime.fn((id: string) => {
   }).pipe(Effect.scoped);
 });
 
-function DownloadLineItem({ video, status }: { video: VideoInfo; status: VideoDownloadStatus }) {
-  const result = useAtomValue(getDownloadProgressByIdAtom(status === "downloading" ? video.id : null));
-  const isDownloadedLocally = useAtomValue(getIsDownloadedLocallyAtom(video.id));
+function DownloadLineItem({ video }: { video: EnhancedVideoInfo }) {
+  const result = useAtomValue(getDownloadProgressByIdAtom(video.status === "downloading" ? video.info.id : null));
+  const isDownloadedLocally = useAtomValue(getIsDownloadedLocallyAtom(video));
 
   const downloadToLocal = useAtomSet(videoDownloadAtom, {
     mode: "promise",
@@ -118,8 +122,8 @@ function DownloadLineItem({ video, status }: { video: VideoInfo; status: VideoDo
 
   return (
     <li>
-      {video.title} <span className="text-neutral-10">({status})</span>
-      {status === "complete" && (
+      {video.info.title} <span className="text-neutral-10">({video.status})</span>
+      {video.status === "complete" && (
         <div className="inline-block border border-neutral-6 p-2">
           {Result.match(isDownloadedLocally, {
             onInitial: () => null,
@@ -127,7 +131,7 @@ function DownloadLineItem({ video, status }: { video: VideoInfo; status: VideoDo
               value ? (
                 <button onClick={async () => console.log("TODO: open")}>Open </button>
               ) : (
-                <button onClick={async () => downloadToLocal(video.id).then(console.log, console.error)}>
+                <button onClick={async () => downloadToLocal(video.info.id).then(console.log, console.error)}>
                   Download
                 </button>
               ),
@@ -179,9 +183,7 @@ export default function HomePage() {
       </header>
       <ul>
         {videosResult._tag === "Success" &&
-          videosResult.value.map((video) => (
-            <DownloadLineItem key={video.info.id} video={video.info} status={video.status} />
-          ))}
+          videosResult.value.map((video) => <DownloadLineItem key={video.info.id} video={video} />)}
       </ul>
     </div>
   );

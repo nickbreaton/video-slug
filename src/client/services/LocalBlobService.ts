@@ -20,7 +20,7 @@ export class LocalBlobService extends Effect.Service<LocalBlobService>()("LocalB
         Effect.gen(function* () {
           const fileHandle = yield* Effect.tryPromise(() => directory.getFileHandle(id)).pipe(
             Effect.map((value) => Option.some(value)),
-            Effect.catchAll(() => Option.none()),
+            Effect.catchAll(() => Effect.succeed(Option.none())),
           );
 
           if (!Option.isSome(fileHandle)) {
