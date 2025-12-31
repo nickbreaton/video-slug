@@ -25,7 +25,7 @@ export class LocalBlobService extends Effect.Service<LocalBlobService>()("LocalB
           });
 
           yield* Effect.tryPromise({
-            try: () => writable.write({ position: 0, data: buffer, type: "write" }),
+            try: () => writable.write({ position: offset, data: buffer, type: "write" }),
             catch: () => "TODO_OPFSWriteError" as const,
           });
 
