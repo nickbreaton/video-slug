@@ -12,20 +12,19 @@ import { BrowserWorker } from "@effect/platform-browser";
 import { LocalBlobService } from "../services/LocalBlobService";
 
 const videosAtom = DownloadClient.query("GetVideos", void 0, { reactivityKeys: ["videos"] });
+
+const workerLayer = BrowserWorker.layer(() => {
+  return new globalThis.Worker(new URL("../worker/main.ts", import.meta.url), {
+    type: "module",
+  });
+});
+
 const runtime = Atom.runtime(
   DownloadClient.layer.pipe(
     Layer.merge(Layer.orDie(LocalVideoService.Default)),
     Layer.provide(FetchHttpClient.layer),
     Layer.provideMerge(LocalBlobService.Default),
-    Layer.merge(
-      // ✅ Vite-compatible worker creation
-      BrowserWorker.layer(
-        () =>
-          new globalThis.Worker(new URL("../worker/main.ts", import.meta.url), {
-            type: "module",
-          }),
-      ),
-    ),
+    Layer.merge(workerLayer),
   ),
 );
 
@@ -97,7 +96,7 @@ const videoDownloadAtom = runtime.fn((id: string) => {
 
     yield* pool.executeEffect(id);
     const blob = yield* localBlobService.get(id);
-    console.log("here", blob);
+
     if (Option.isSome(blob)) {
       const video = document.createElement("video");
       video.controls = true;

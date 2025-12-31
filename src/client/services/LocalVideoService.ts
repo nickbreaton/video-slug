@@ -22,13 +22,7 @@ export class LocalVideoService extends Effect.Service<LocalVideoService>()("Loca
           yield* blobService.garbageCollect(ids);
         }),
 
-      // @effect-diagnostics-next-line unnecessaryEffectGen:off
-      get: () =>
-        Effect.gen(function* () {
-          return yield* store
-            .get(key)
-            .pipe(Effect.catchAll(() => Effect.dieMessage("Failed to read from local storage")));
-        }),
+      get: () => store.get(key).pipe(Effect.catchAll(() => Effect.dieMessage("Failed to read from local storage"))),
     };
   }),
 }) {}
