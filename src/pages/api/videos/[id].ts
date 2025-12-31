@@ -1,5 +1,8 @@
 import type { APIRoute } from "astro";
 import { Effect, Layer, ManagedRuntime, Option } from "effect";
+import { createReadStream } from "node:fs";
+import { stat } from "node:fs/promises";
+import { Readable } from "node:stream";
 
 import { memoMap } from "@/server/memoMap";
 import { VideoDirectoryService } from "@/server/services/VideoDirectoryService";
@@ -41,36 +44,40 @@ export const GET: APIRoute = async ({ request, params }) => {
   });
 
   const videoFilePath = await runtime.runPromise(getVideoFilePath);
-  const file = Bun.file(videoFilePath);
+  const fileStat = await stat(videoFilePath);
+  const fileSize = fileStat.size;
 
   // Handle Range requests for video streaming
-  // Based on implementation here: https://github.com/oven-sh/bun/blob/ecb6c810c892a4d1c2da7d0515bd3374b4646eb1/examples/http-file-extended.ts
   const range = request.headers.get("Range");
 
   if (range) {
     const parts = range.replace(/bytes=/, "").split("-");
     const start = parseInt(parts[0], 10);
-    const fileSize = file.size;
-    const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
+    const end = Math.min(parts[1] ? parseInt(parts[1], 10) : fileSize, fileSize);
 
-    const slice = file.slice(start, end + 1);
+    const stream = createReadStream(videoFilePath, { start, end: end });
+    const webStream = Readable.toWeb(stream) as unknown as ReadableStream;
 
-    return new Response(slice, {
+    return new Response(webStream, {
       status: 206,
       headers: {
         "Content-Range": `bytes ${start}-${end}/${fileSize}`,
         "Accept-Ranges": "bytes",
-        "Content-Length": String(slice.size),
-        "Content-Type": file.type,
+        "Content-Length": String(end - start),
+        "Content-Type": "video/mp4",
       },
     });
   }
 
   // Return full file
-  return new Response(file, {
+  const stream = createReadStream(videoFilePath);
+  const webStream = Readable.toWeb(stream) as unknown as ReadableStream;
+
+  return new Response(webStream, {
     headers: {
-      "Content-Type": file.type || "video/mp4",
+      "Content-Type": "video/mp4",
       "Accept-Ranges": "bytes",
+      "Content-Length": String(fileSize),
     },
   });
 };

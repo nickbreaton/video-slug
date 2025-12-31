@@ -97,7 +97,7 @@ const videoDownloadAtom = runtime.fn((id: string) => {
 
     yield* pool.executeEffect(id);
     const blob = yield* localBlobService.get(id);
-
+    console.log("here", blob);
     if (Option.isSome(blob)) {
       const video = document.createElement("video");
       video.controls = true;
