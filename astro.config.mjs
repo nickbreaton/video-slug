@@ -3,6 +3,7 @@ import react from "@astrojs/react";
 import node from "@astrojs/node";
 import serviceWorker from "astrojs-service-worker";
 import tailwindcss from "@tailwindcss/vite";
+import basicSsl from "@vitejs/plugin-basic-ssl";
 
 // https://astro.build/config
 export default defineConfig({
@@ -12,6 +13,6 @@ export default defineConfig({
     mode: "standalone",
   }),
   vite: {
-    plugins: [tailwindcss()],
+    plugins: [tailwindcss(), import.meta.env.BASIC_SSL && basicSsl()],
   },
 });
