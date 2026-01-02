@@ -1,9 +1,7 @@
 import type { APIRoute } from "astro";
-import { DownloadRpcs } from "@/schema/rpc/download";
+import { VideoSlugRpcs } from "@/schema/rpc";
 import { DownloadProgress } from "@/schema/videos";
 import { BunContext, BunHttpServer } from "@effect/platform-bun";
-import { Path } from "@effect/platform";
-import { SqliteClient } from "@effect/sql-sqlite-bun";
 import { RpcSerialization, RpcServer } from "@effect/rpc";
 import { Effect, Layer, Option, Stream } from "effect";
 import { VideoDownloadManager } from "@/server/services/VideoDownloadManager";
@@ -14,7 +12,7 @@ import { DownloadGarbageCollecter } from "@/server/services/DownloadGarbageColle
 import { memoMap } from "@/server/memoMap";
 import { SqlLive } from "@/server/layers/SqlLive";
 
-const DownloadLive = DownloadRpcs.toLayer(
+const VideoSlugRpcsLive = VideoSlugRpcs.toLayer(
   Effect.gen(function* () {
     const videoDownloadManager = yield* VideoDownloadManager;
     const downloadStreamManager = yield* DownloadStreamManager;
@@ -24,6 +22,7 @@ const DownloadLive = DownloadRpcs.toLayer(
       Download: ({ url }) => {
         return videoDownloadManager.initiateDownload(url);
       },
+
       GetDownloadProgress: ({ id }) =>
         Effect.gen(function* () {
           const result = downloadStreamManager.get(id);
@@ -38,6 +37,7 @@ const DownloadLive = DownloadRpcs.toLayer(
 
           return next;
         }).pipe(Stream.unwrap),
+
       GetVideos: () => {
         return videoRepo.getAll();
       },
@@ -46,7 +46,7 @@ const DownloadLive = DownloadRpcs.toLayer(
 );
 
 const RpcLive = Layer.mergeAll(
-  DownloadLive,
+  VideoSlugRpcsLive,
   RpcSerialization.layerNdjson,
   BunHttpServer.layerContext,
   DownloadGarbageCollecter.Default,
@@ -59,7 +59,7 @@ const RpcLive = Layer.mergeAll(
   Layer.provide(BunContext.layer),
 );
 
-const { handler } = RpcServer.toWebHandler(DownloadRpcs, { layer: RpcLive, memoMap });
+const { handler } = RpcServer.toWebHandler(VideoSlugRpcs, { layer: RpcLive, memoMap });
 
 export const POST: APIRoute = async ({ request }) => {
   return handler(request);

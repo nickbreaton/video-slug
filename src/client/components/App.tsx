@@ -7,11 +7,11 @@ import type { VideoInfo } from "@/schema/videos";
 import type { VideoDownloadStatus } from "@/schema/videos";
 import { EnhancedVideoInfo } from "@/schema/videos";
 import { LocalVideoService } from "../services/LocalVideoService";
-import { DownloadClient } from "../services/DownloadClient";
+import { VideoSlugRpcClient } from "../services/DownloadClient";
 import { BrowserWorker } from "@effect/platform-browser";
 import { LocalBlobService } from "../services/LocalBlobService";
 
-const videosAtom = DownloadClient.query("GetVideos", void 0, { reactivityKeys: ["videos"] });
+const videosAtom = VideoSlugRpcClient.query("GetVideos", void 0, { reactivityKeys: ["videos"] });
 
 const workerLayer = BrowserWorker.layer(() => {
   return new globalThis.Worker(new URL("../worker/main.ts", import.meta.url), {
@@ -20,7 +20,7 @@ const workerLayer = BrowserWorker.layer(() => {
 });
 
 const runtime = Atom.runtime(
-  DownloadClient.layer.pipe(
+  VideoSlugRpcClient.layer.pipe(
     Layer.merge(Layer.orDie(LocalVideoService.Default)),
     Layer.provide(FetchHttpClient.layer),
     Layer.provideMerge(LocalBlobService.Default),
@@ -52,9 +52,9 @@ const cachedVideosAtom = runtime.atom((get) => {
   }).pipe(Stream.unwrap);
 });
 
-const downloadAtom = DownloadClient.runtime.fn(
+const downloadAtom = VideoSlugRpcClient.runtime.fn(
   Effect.fnUntraced(function* (url: string) {
-    const client = yield* DownloadClient;
+    const client = yield* VideoSlugRpcClient;
 
     const videoInfo = yield* client("Download", {
       url: new URL(url),
@@ -71,7 +71,7 @@ const getDownloadProgressByIdAtom = Atom.family((id: string | null) => {
     id == null
       ? Stream.empty
       : Effect.gen(function* () {
-          const client = yield* DownloadClient;
+          const client = yield* VideoSlugRpcClient;
           return client("GetDownloadProgress", { id });
         }).pipe(Stream.unwrap, Stream.onEnd(Reactivity.invalidate(["videos"]))),
   );

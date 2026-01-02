@@ -1,6 +1,6 @@
 import { Rpc, RpcGroup } from "@effect/rpc";
 import { Schema } from "effect";
-import { DownloadProgress, EnhancedVideoInfo, VideoInfo } from "../videos.js";
+import { DownloadProgress, EnhancedVideoInfo, VideoInfo } from "./videos.js";
 
 export class DownloadInitiationError extends Schema.TaggedError<DownloadInitiationError>("DownloadInitiationError")(
   "DownloadInitiationError",
@@ -9,7 +9,7 @@ export class DownloadInitiationError extends Schema.TaggedError<DownloadInitiati
   },
 ) {}
 
-export class DownloadRpcs extends RpcGroup.make(
+export class VideoSlugRpcs extends RpcGroup.make(
   Rpc.make("Download", {
     success: VideoInfo,
     error: DownloadInitiationError,
@@ -28,5 +28,6 @@ export class DownloadRpcs extends RpcGroup.make(
   Rpc.make("GetVideos", {
     success: Schema.Array(EnhancedVideoInfo),
     error: Schema.Void,
+    payload: Schema.Void,
   }),
 ) {}

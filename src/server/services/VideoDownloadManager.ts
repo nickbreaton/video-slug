@@ -1,4 +1,4 @@
-import { DownloadInitiationError } from "@/schema/rpc/download";
+import { DownloadInitiationError } from "@/schema/rpc";
 import { VideoInfo } from "@/schema/videos";
 import { Console, Effect, Exit, Option, pipe, Scope, Stream } from "effect";
 import { VideoDownloadCommand } from "@/server/services/VideoDownloadCommand";
