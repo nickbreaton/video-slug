@@ -1,4 +1,4 @@
-import { Effect, Option } from "effect";
+import { Effect, Option, Stream } from "effect";
 
 export class LocalBlobService extends Effect.Service<LocalBlobService>()("LocalBlobService", {
   dependencies: [],
@@ -43,7 +43,24 @@ export class LocalBlobService extends Effect.Service<LocalBlobService>()("LocalB
 
       garbageCollect: (validIds: string[]) =>
         Effect.gen(function* () {
-          // TODO: implement this
+          const fastValidIds = new Set(validIds);
+
+          // @ts-expect-error - OPFS-specific entries do not have types
+          const entries: AsyncIterable<[string, FileSystemFileHandle]> = directory.entries();
+
+          yield* Stream.fromAsyncIterable(entries, () => "TODO_DirectoryListError" as const).pipe(
+            Stream.map(([id]) => id),
+            Stream.filter((id) => !fastValidIds.has(id)),
+            Stream.mapEffect(
+              (id) =>
+                Effect.tryPromise({
+                  try: () => directory.removeEntry(id),
+                  catch: () => "TODO_FileRemoveError" as const,
+                }),
+              { concurrency: "unbounded" },
+            ),
+            Stream.runDrain,
+          );
         }),
     };
   }),

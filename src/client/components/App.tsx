@@ -39,8 +39,11 @@ const cachedVideosAtom = runtime.atom((get) => {
       Stream.tap((value) => {
         return localVideoService.set(value as EnhancedVideoInfo[]);
       }),
-      Stream.catchAll(() => {
-        console.log("TODO: Throw a toast or something to inform user of error but still keep online working well");
+      Stream.catchAll((error) => {
+        console.log(
+          "TODO: Throw a toast or something to inform user of error but still keep online working well",
+          error,
+        );
         return Stream.empty;
       }),
     );
