@@ -4,13 +4,12 @@ import { LocalBlobWriterService } from "./LocalBlobWriterService";
 import { parse as parseContentRange } from "content-range";
 import { LocalBlobService } from "../services/LocalBlobService";
 
-// Cloneable error for crossing worker boundary
-export class VideoDownloadError extends Data.TaggedError("VideoDownloadError")<{
+export class VideoFetchError extends Data.TaggedError("VideoFetchError")<{
   readonly reason: string;
 }> {}
 
-export class LocalVideoDownloadService extends Effect.Service<LocalVideoDownloadService>()(
-  "LocalVideoDownloadService",
+export class LocalVideoFetchService extends Effect.Service<LocalVideoFetchService>()(
+  "LocalVideoFetchService",
   {
     dependencies: [LocalBlobWriterService.Default, LocalBlobService.Default],
     effect: Effect.gen(function* () {
@@ -18,10 +17,8 @@ export class LocalVideoDownloadService extends Effect.Service<LocalVideoDownload
       const localBlobService = yield* LocalBlobService;
       const localBlobWriterService = yield* LocalBlobWriterService;
 
-      const download = Effect.fn(function* (id: string, progress: SubscriptionRef.SubscriptionRef<number>) {
-        // TODO: Consider storage quota checks before storing large video blobs
-
-        const chunkSize = 1024 * 1024 * 5; // 5 MB
+      const fetch = Effect.fn(function* (id: string, progress: SubscriptionRef.SubscriptionRef<number>) {
+        const chunkSize = 1024 * 1024 * 5;
 
         let prevWriteFiber: Fiber.Fiber<void, "TODO_OPFSWriteError"> | undefined;
 
@@ -39,8 +36,7 @@ export class LocalVideoDownloadService extends Effect.Service<LocalVideoDownload
                   },
                 })
                 .pipe(
-                  // Convert non-cloneable HttpClientError to cloneable VideoDownloadError
-                  Effect.mapError((error) => new VideoDownloadError({ reason: error.message })),
+                  Effect.mapError((error) => new VideoFetchError({ reason: error.message })),
                 ),
               prevWriteFiber ? Fiber.join(prevWriteFiber) : Effect.void,
             ],
@@ -50,17 +46,16 @@ export class LocalVideoDownloadService extends Effect.Service<LocalVideoDownload
           const contentRangeHeader = Headers.get(response.headers, "Content-Range");
 
           if (Option.isNone(contentRangeHeader)) {
-            return yield* Effect.fail(new VideoDownloadError({ reason: "Missing content-range header" }));
+            return yield* Effect.fail(new VideoFetchError({ reason: "Missing content-range header" }));
           }
 
           const contentRange = parseContentRange(contentRangeHeader.value);
           const buffer = yield* response.arrayBuffer.pipe(
-            Effect.mapError((error) => new VideoDownloadError({ reason: error.message })),
+            Effect.mapError((error) => new VideoFetchError({ reason: error.message })),
           );
 
           yield* writeHandle.write(progressValue, buffer);
 
-          // end is inclusive (last byte index), so next position is end + 1
           const nextProgress = (contentRange?.end ?? 0) + 1;
           const totalSize = contentRange?.size ?? 0;
 
@@ -71,23 +66,22 @@ export class LocalVideoDownloadService extends Effect.Service<LocalVideoDownload
           }
         }
 
-        // In case of not iterating again ensure previous has completed
         if (prevWriteFiber) yield* Fiber.join(prevWriteFiber);
       });
 
-      const downloadStream = (id: string) =>
+      const fetchStream = (id: string) =>
         Effect.gen(function* () {
           const blob = yield* localBlobService.get(id);
           const initialProgress = Option.map(blob, (value) => value.size).pipe(Option.getOrElse(() => 0));
 
           const progress = yield* SubscriptionRef.make(initialProgress);
 
-          const fiber = yield* Effect.fork(download(id, progress));
+          const fiber = yield* Effect.fork(fetch(id, progress));
 
           return progress.changes.pipe(Stream.interruptWhen(Fiber.join(fiber)));
         }).pipe(Stream.unwrapScoped);
 
-      return { download: downloadStream };
+      return { fetch: fetchStream };
     }),
   },
 ) {}

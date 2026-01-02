@@ -1,14 +1,14 @@
 import * as BrowserRunner from "@effect/platform-browser/BrowserWorkerRunner";
 import * as Runner from "@effect/platform/WorkerRunner";
 import { Effect, Layer, Stream } from "effect";
-import { LocalVideoDownloadService, VideoDownloadError } from "./LocalVideoDownloadService";
+import { LocalVideoFetchService, VideoFetchError } from "./LocalVideoFetchService";
 import { FetchHttpClient } from "@effect/platform";
 
 const WorkerLive = Runner.layer(
   (id: string) => {
     return Effect.gen(function* () {
-      const downloadService = yield* LocalVideoDownloadService;
-      return downloadService.download(id);
+      const fetchService = yield* LocalVideoFetchService;
+      return fetchService.fetch(id);
     }).pipe(Stream.unwrap);
   },
   {
@@ -22,7 +22,7 @@ const WorkerLive = Runner.layer(
   },
 ).pipe(
   Layer.provide(BrowserRunner.layer),
-  Layer.provide(LocalVideoDownloadService.Default),
+  Layer.provide(LocalVideoFetchService.Default),
   Layer.provide(FetchHttpClient.layer),
 );
 
