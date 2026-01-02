@@ -1,5 +1,5 @@
 import { Effect, Option, Stream } from "effect";
-import { OriginPrivateFileSystem, OriginPrivateFileSystemError } from "./OriginPrivateFileSystem";
+import { OriginPrivateFileSystem } from "./OriginPrivateFileSystem";
 
 export class LocalBlobService extends Effect.Service<LocalBlobService>()("LocalBlobService", {
   dependencies: [OriginPrivateFileSystem.Default],
@@ -35,11 +35,10 @@ export class LocalBlobService extends Effect.Service<LocalBlobService>()("LocalB
 
       garbageCollect: (validIds: string[]) =>
         Effect.gen(function* () {
-          const fastValidIds = new Set(validIds);
-
+          const validIdsSet = new Set(validIds);
           yield* opfs.entries(directory).pipe(
             Stream.map(([id]) => id),
-            Stream.filter((id) => !fastValidIds.has(id)),
+            Stream.filter((id) => !validIdsSet.has(id)),
             Stream.mapEffect((id) => opfs.removeEntry(directory, id), { concurrency: "unbounded" }),
             Stream.runDrain,
           );
