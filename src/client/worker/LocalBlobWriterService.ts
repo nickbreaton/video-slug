@@ -1,22 +1,21 @@
-import { Effect, Option } from "effect";
+import { Effect } from "effect";
 import { LocalBlobService } from "../services/LocalBlobService";
+import { OriginPrivateFileSystem, OriginPrivateFileSystemError } from "../services/OriginPrivateFileSystem";
 
 export class LocalBlobWriterService extends Effect.Service<LocalBlobWriterService>()("LocalBlobWriterService", {
-  dependencies: [LocalBlobService.Default],
+  dependencies: [LocalBlobService.Default, OriginPrivateFileSystem.Default],
   effect: Effect.gen(function* () {
     const { directory } = yield* LocalBlobService;
+    const opfs = yield* OriginPrivateFileSystem;
 
     return {
       createWriteHandle: (id: string) =>
         Effect.gen(function* () {
-          const fileHandle = yield* Effect.tryPromise({
-            try: () => directory.getFileHandle(id, { create: true }),
-            catch: () => "TODO" as const,
-          });
+          const fileHandle = yield* opfs.getFileHandle(directory, id, { create: true });
 
           const accessHandle = yield* Effect.tryPromise({
             try: () => fileHandle.createSyncAccessHandle(),
-            catch: () => "TODO" as const,
+            catch: (cause) => new OriginPrivateFileSystemError({ type: "NotAllowedError", cause }),
           });
 
           yield* Effect.addFinalizer(() => {
@@ -30,7 +29,7 @@ export class LocalBlobWriterService extends Effect.Service<LocalBlobWriterServic
                   accessHandle.write(buffer, { at: offset });
                   accessHandle.flush();
                 },
-                catch: () => "TODO_OPFSWriteError" as const,
+                catch: (cause) => new OriginPrivateFileSystemError({ type: "UnknownError", cause }),
               }),
 
             fileHandle,
