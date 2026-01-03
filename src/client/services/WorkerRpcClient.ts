@@ -1,4 +1,4 @@
-import * as RpcClient from "@effect/rpc/RpcClient";
+import { RpcClient } from "@effect/rpc";
 import * as BrowserWorker from "@effect/platform-browser/BrowserWorker";
 import { Effect, Layer } from "effect";
 import { WorkerRpcs } from "@/schema/worker";
@@ -15,9 +15,3 @@ export const WorkerRpcClientLive = RpcClient.layerProtocolWorker({
     ),
   ),
 );
-
-export const fetchVideo = (id: string) =>
-  Effect.gen(function* () {
-    const client = yield* RpcClient.make(WorkerRpcs);
-    return client.FetchVideo({ id });
-  });

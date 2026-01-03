@@ -7,7 +7,9 @@ import { EnhancedVideoInfo } from "@/schema/videos";
 import { LocalVideoRepository } from "../services/LocalVideoRepository";
 import { VideoSlugRpcClient } from "../services/DownloadClient";
 import { LocalBlobService } from "../services/LocalBlobService";
-import { WorkerRpcClientLive, fetchVideo } from "../services/WorkerRpcClient";
+import { WorkerRpcClientLive } from "../services/WorkerRpcClient";
+import { RpcClient } from "@effect/rpc";
+import { WorkerRpcs } from "@/schema/worker";
 
 const videosAtom = VideoSlugRpcClient.query("GetVideos", void 0, { reactivityKeys: ["videos"] });
 
@@ -113,7 +115,8 @@ const deleteLocalVideoAtom = runtime.fn((id: string) => {
 
 const videoDownloadAtom = runtime.fn((id: string) => {
   return Effect.gen(function* () {
-    const stream = yield* fetchVideo(id);
+    const client = yield* RpcClient.make(WorkerRpcs);
+    const stream = client.FetchVideo({ id });
 
     yield* stream.pipe(Stream.runForEach(() => Reactivity.invalidate(["download", id])));
 
