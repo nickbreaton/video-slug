@@ -103,6 +103,14 @@ const openLocalVideoAtom = runtime.fn((id: string) => {
   });
 });
 
+const deleteLocalVideoAtom = runtime.fn((id: string) => {
+  return Effect.gen(function* () {
+    const localBlobService = yield* LocalBlobService;
+    yield* localBlobService.delete(id);
+    yield* Reactivity.invalidate(["download", id]);
+  });
+});
+
 const videoDownloadAtom = runtime.fn((id: string) => {
   return Effect.gen(function* () {
     const stream = yield* fetchVideo(id);
@@ -131,6 +139,8 @@ function DownloadLineItem({ video }: { video: EnhancedVideoInfo }) {
     mode: "promise",
   });
 
+  const deleteLocalVideo = useAtomSet(deleteLocalVideoAtom);
+
   const downloadToLocal = useAtomSet(videoDownloadAtom, {
     mode: "promise",
   });
@@ -139,14 +149,24 @@ function DownloadLineItem({ video }: { video: EnhancedVideoInfo }) {
     <li>
       {video.info.title} <span className="text-neutral-10">({video.status})</span>
       {video.status === "complete" && (
-        <div className="inline-block border border-neutral-6 p-2">
+        <div className="inline-block">
           {Result.match(localDownloadProgressResult, {
             onInitial: () => null,
             onSuccess: ({ value }) =>
               value === 100 ? (
-                <button onClick={async () => openLocalVideo(video.info.id)}>Open </button>
+                <span className="space-x-2">
+                  <button className="border border-neutral-6 p-2" onClick={async () => openLocalVideo(video.info.id)}>
+                    Open
+                  </button>
+                  <button className="border border-neutral-6 p-2" onClick={async () => deleteLocalVideo(video.info.id)}>
+                    🗑️
+                  </button>
+                </span>
               ) : (
-                <button onClick={async () => downloadToLocal(video.info.id).then(console.log, console.error)}>
+                <button
+                  className="border border-neutral-6 p-2"
+                  onClick={async () => downloadToLocal(video.info.id).then(console.log, console.error)}
+                >
                   {value ? `Downloading... (${value}%)` : "Download"}
                 </button>
               ),

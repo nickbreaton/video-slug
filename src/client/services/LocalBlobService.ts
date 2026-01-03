@@ -43,6 +43,8 @@ export class LocalBlobService extends Effect.Service<LocalBlobService>()("LocalB
             Stream.runDrain,
           );
         }),
+
+      delete: (id: string) => opfs.removeEntry(directory, id),
     };
   }),
 }) {}
