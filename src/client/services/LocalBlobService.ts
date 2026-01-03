@@ -8,6 +8,17 @@ export class LocalBlobService extends Effect.Service<LocalBlobService>()("LocalB
 
     const directory = yield* opfs.getDirectoryHandle(yield* opfs.root, "videos", { create: true });
 
+    const deleteVideosNotMatchingIds = (providedIds: string[]) =>
+      Effect.gen(function* () {
+        const validIdsSet = new Set(providedIds);
+        yield* opfs.entries(directory).pipe(
+          Stream.map(([id]) => id),
+          Stream.filter((id) => !validIdsSet.has(id)),
+          Stream.mapEffect((id) => opfs.removeEntry(directory, id), { concurrency: "unbounded" }),
+          Stream.runDrain,
+        );
+      });
+
     return {
       directory,
 
@@ -33,18 +44,11 @@ export class LocalBlobService extends Effect.Service<LocalBlobService>()("LocalB
           Effect.catchAll(() => Effect.succeed(false)),
         ),
 
-      garbageCollect: (validIds: string[]) =>
-        Effect.gen(function* () {
-          const validIdsSet = new Set(validIds);
-          yield* opfs.entries(directory).pipe(
-            Stream.map(([id]) => id),
-            Stream.filter((id) => !validIdsSet.has(id)),
-            Stream.mapEffect((id) => opfs.removeEntry(directory, id), { concurrency: "unbounded" }),
-            Stream.runDrain,
-          );
-        }),
+      garbageCollect: (validIds: string[]) => deleteVideosNotMatchingIds(validIds),
 
       delete: (id: string) => opfs.removeEntry(directory, id),
+
+      deleteAll: () => deleteVideosNotMatchingIds([]),
     };
   }),
 }) {}

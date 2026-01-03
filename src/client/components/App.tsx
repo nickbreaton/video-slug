@@ -185,12 +185,22 @@ function DownloadLineItem({ video }: { video: EnhancedVideoInfo }) {
   );
 }
 
+const deleteAllLocalVideosAtom = runtime.fn(() => {
+  return Effect.gen(function* () {
+    const localBlobService = yield* LocalBlobService;
+    yield* localBlobService.deleteAll();
+    yield* Reactivity.invalidate(["download"]);
+  });
+});
+
 export default function HomePage() {
   // Use the videos atom - this will automatically fetch on mount
   const videosResult = useAtomValue(cachedVideosAtom);
 
   // Get the download function
   const download = useAtomSet(downloadAtom);
+
+  const deleteAllLocalVideos = useAtomSet(deleteAllLocalVideosAtom);
 
   const handleClick = () => {
     const video = prompt("Enter video URL", "https://www.youtube.com/watch?v=3PFLeteDuyQ");
@@ -204,17 +214,22 @@ export default function HomePage() {
   return (
     <div>
       <header className="flex justify-end p-4">
-        <button
-          onClick={handleClick}
-          className={`
-            rounded-full border border-solid border-neutral-6 bg-neutral-3 p-3 text-neutral-12
-            shadow-xs shadow-neutral-4
-            hover:border-neutral-7 hover:bg-neutral-4
-          `}
-        >
-          <span className="sr-only">Add</span>
-          <Add01Icon strokeWidth={2.5} size={16} />
-        </button>
+        <span className="space-x-2">
+          <button className="border border-neutral-6 p-2" onClick={() => deleteAllLocalVideos()}>
+            Delete all local videos
+          </button>
+          <button
+            onClick={handleClick}
+            className={`
+              rounded-full border border-solid border-neutral-6 bg-neutral-3 p-3 text-neutral-12
+              shadow-xs shadow-neutral-4
+              hover:border-neutral-7 hover:bg-neutral-4
+            `}
+          >
+            <span className="sr-only">Add</span>
+            <Add01Icon strokeWidth={2.5} size={16} />
+          </button>
+        </span>
       </header>
       <ul>
         {videosResult._tag === "Success" &&
