@@ -1,4 +1,4 @@
-import { FetchHttpClient, Worker } from "@effect/platform";
+import { FetchHttpClient } from "@effect/platform";
 import { Effect, Layer, Option, Stream } from "effect";
 import { Atom, useAtomValue, useAtomSet, Result } from "@effect-atom/atom-react";
 import { Add01Icon } from "hugeicons-react";
@@ -6,23 +6,17 @@ import { Reactivity } from "@effect/experimental";
 import { EnhancedVideoInfo } from "@/schema/videos";
 import { LocalVideoService } from "../services/LocalVideoService";
 import { VideoSlugRpcClient } from "../services/DownloadClient";
-import { BrowserWorker } from "@effect/platform-browser";
 import { LocalBlobService } from "../services/LocalBlobService";
+import { WorkerRpcClientLive, fetchVideo } from "../services/WorkerRpcClient";
 
 const videosAtom = VideoSlugRpcClient.query("GetVideos", void 0, { reactivityKeys: ["videos"] });
-
-const workerLayer = BrowserWorker.layer(() => {
-  return new globalThis.Worker(new URL("../worker/main.ts", import.meta.url), {
-    type: "module",
-  });
-});
 
 const runtime = Atom.runtime(
   VideoSlugRpcClient.layer.pipe(
     Layer.merge(Layer.orDie(LocalVideoService.Default)),
     Layer.provide(FetchHttpClient.layer),
     Layer.provideMerge(LocalBlobService.Default),
-    Layer.merge(workerLayer),
+    Layer.merge(WorkerRpcClientLive),
   ),
 );
 
@@ -111,12 +105,9 @@ const openLocalVideoAtom = runtime.fn((id: string) => {
 
 const videoDownloadAtom = runtime.fn((id: string) => {
   return Effect.gen(function* () {
-    const pool = yield* Worker.makePool<string, number, never>({
-      size: 1,
-    });
+    const stream = yield* fetchVideo(id);
 
-    // TODO: need to report progress across thread
-    yield* pool.execute(id).pipe(Stream.runForEach(() => Reactivity.invalidate(["download", id])));
+    yield* stream.pipe(Stream.runForEach(() => Reactivity.invalidate(["download", id])));
 
     const localBlobService = yield* LocalBlobService;
     const blob = yield* localBlobService.get(id);
