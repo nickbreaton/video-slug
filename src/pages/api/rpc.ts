@@ -19,7 +19,7 @@ const VideoSlugRpcsLive = VideoSlugRpcs.toLayer(
     const videoRepo = yield* VideoRepo;
 
     return {
-      Download: ({ url }) => {
+      SaveVideo: ({ url }) => {
         return videoDownloadManager.initiateDownload(url);
       },
 

@@ -3,8 +3,6 @@ import { Effect, Layer, Option, Stream } from "effect";
 import { Atom, useAtomValue, useAtomSet, Result } from "@effect-atom/atom-react";
 import { Add01Icon } from "hugeicons-react";
 import { Reactivity } from "@effect/experimental";
-import type { VideoInfo } from "@/schema/videos";
-import type { VideoDownloadStatus } from "@/schema/videos";
 import { EnhancedVideoInfo } from "@/schema/videos";
 import { LocalVideoService } from "../services/LocalVideoService";
 import { VideoSlugRpcClient } from "../services/DownloadClient";
@@ -56,7 +54,7 @@ const downloadAtom = VideoSlugRpcClient.runtime.fn(
   Effect.fnUntraced(function* (url: string) {
     const client = yield* VideoSlugRpcClient;
 
-    const videoInfo = yield* client("Download", {
+    const videoInfo = yield* client("SaveVideo", {
       url: new URL(url),
     });
 

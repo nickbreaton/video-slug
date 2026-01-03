@@ -10,7 +10,7 @@ export class DownloadInitiationError extends Schema.TaggedError<DownloadInitiati
 ) {}
 
 export class VideoSlugRpcs extends RpcGroup.make(
-  Rpc.make("Download", {
+  Rpc.make("SaveVideo", {
     success: VideoInfo,
     error: DownloadInitiationError,
     payload: {
