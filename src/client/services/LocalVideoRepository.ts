@@ -5,7 +5,7 @@ import { KeyValueStore } from "@effect/platform";
 import { BrowserKeyValueStore } from "@effect/platform-browser";
 import { LocalBlobService } from "./LocalBlobService";
 
-export class LocalVideoService extends Effect.Service<LocalVideoService>()("LocalVideoService", {
+export class LocalVideoRepository extends Effect.Service<LocalVideoRepository>()("LocalVideoRepository", {
   dependencies: [BrowserKeyValueStore.layerLocalStorage],
   effect: Effect.gen(function* () {
     const kv = yield* KeyValueStore.KeyValueStore;

@@ -4,7 +4,7 @@ import { Atom, useAtomValue, useAtomSet, Result } from "@effect-atom/atom-react"
 import { Add01Icon } from "hugeicons-react";
 import { Reactivity } from "@effect/experimental";
 import { EnhancedVideoInfo } from "@/schema/videos";
-import { LocalVideoService } from "../services/LocalVideoService";
+import { LocalVideoRepository } from "../services/LocalVideoRepository";
 import { VideoSlugRpcClient } from "../services/DownloadClient";
 import { LocalBlobService } from "../services/LocalBlobService";
 import { WorkerRpcClientLive, fetchVideo } from "../services/WorkerRpcClient";
@@ -13,7 +13,7 @@ const videosAtom = VideoSlugRpcClient.query("GetVideos", void 0, { reactivityKey
 
 const runtime = Atom.runtime(
   VideoSlugRpcClient.layer.pipe(
-    Layer.merge(Layer.orDie(LocalVideoService.Default)),
+    Layer.merge(Layer.orDie(LocalVideoRepository.Default)),
     Layer.provide(FetchHttpClient.layer),
     Layer.provideMerge(LocalBlobService.Default),
     Layer.merge(WorkerRpcClientLive),
@@ -22,14 +22,14 @@ const runtime = Atom.runtime(
 
 const cachedVideosAtom = runtime.atom((get) => {
   return Effect.gen(function* () {
-    const localVideoService = yield* LocalVideoService;
-    const cache = yield* localVideoService.get();
+    const localVideoRepository = yield* LocalVideoRepository;
+    const cache = yield* localVideoRepository.get();
 
     const cacheStream = Option.isSome(cache) ? Stream.make(cache.value) : Stream.empty;
 
     const serverStream = get.streamResult(videosAtom).pipe(
       Stream.tap((value) => {
-        return localVideoService.set(value as EnhancedVideoInfo[]);
+        return localVideoRepository.set(value as EnhancedVideoInfo[]);
       }),
       Stream.catchAll((error) => {
         console.log(
