@@ -120,13 +120,6 @@ const videoDownloadAtom = runtime.fn((id: string) => {
     const localBlobService = yield* LocalBlobService;
     const blob = yield* localBlobService.get(id);
 
-    if (Option.isSome(blob)) {
-      const video = document.createElement("video");
-      video.controls = true;
-      document.body.appendChild(video);
-      video.src = URL.createObjectURL(blob.value);
-    }
-
     yield* Reactivity.invalidate(["download", id]);
   }).pipe(Effect.scoped);
 });
