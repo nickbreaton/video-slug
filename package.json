@@ -8,7 +8,7 @@
     "dev:ssl": "BASIC_SSL=1 bunx --bun astro dev --host --port 5432",
     "build": "bunx --bun astro build",
     "preview": "bunx --bun astro preview",
-    "start": "bun run preview",
+    "start": "bun --bun run preview",
     "lint": "eslint",
     "check": "astro check"
   },
@@ -28,13 +28,11 @@
     "astrojs-service-worker": "^2.0.0",
     "content-range": "^2.0.2",
     "effect": "^3.19.14",
-    "eslint-plugin-better-tailwindcss": "^3.8.0",
     "hugeicons-react": "^0.3.0",
     "mime-types": "^3.0.2",
     "react": "19.2.3",
     "react-dom": "19.2.3",
-    "tailwind-merge": "^3.4.0",
-    "tailwindcss": "^4.1.18"
+    "tailwind-merge": "^3.4.0"
   },
   "devDependencies": {
     "@astrojs/check": "^0.9.6",
@@ -46,6 +44,8 @@
     "@typescript-eslint/parser": "^8.51.0",
     "@vitejs/plugin-basic-ssl": "^2.1.0",
     "eslint": "^9.39.2",
+    "eslint-plugin-better-tailwindcss": "^3.8.0",
+    "tailwindcss": "^4.1.18",
     "typescript": "^5.9.3"
   },
   "prettier": {
