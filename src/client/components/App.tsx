@@ -113,19 +113,13 @@ const deleteLocalVideoAtom = runtime.fn((id: string) => {
   });
 });
 
-const videoDownloadAtom = runtime.fn(
-  (id: string) => {
-    return Effect.gen(function* () {
-      const client = yield* RpcClient.make(WorkerRpcs);
-      const stream = client.FetchVideo({ id });
-      const invalidate = Reactivity.invalidate(["download", id]);
-
-      yield* stream.pipe(Stream.runForEach(() => invalidate));
-      yield* Effect.addFinalizer(() => invalidate);
-    });
-  },
-  { concurrent: true },
-);
+const videoDownloadAtom = runtime.fn((id: string) => {
+  return Effect.gen(function* () {
+    const client = yield* RpcClient.make(WorkerRpcs);
+    const stream = client.FetchVideo({ id });
+    return stream.pipe(Stream.tap(() => Reactivity.invalidate(["download", id])));
+  }).pipe(Stream.unwrapScoped);
+});
 
 function DownloadLineItem({ video }: { video: EnhancedVideoInfo }) {
   const result = useAtomValue(getDownloadProgressByIdAtom(video.status === "downloading" ? video.info.id : null));
