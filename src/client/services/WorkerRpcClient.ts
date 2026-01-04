@@ -4,14 +4,17 @@ import { Effect, Layer } from "effect";
 import { WorkerRpcs } from "@/schema/worker";
 
 export const WorkerRpcClientLive = RpcClient.layerProtocolWorker({
-  size: 1,
+  minSize: 0,
+  maxSize: 10,
+  timeToLive: "0 millis",
+  concurrency: 1,
 }).pipe(
   Layer.provide(
-    BrowserWorker.layerPlatform(
-      () =>
-        new globalThis.Worker(new URL("../worker/main.ts", import.meta.url), {
-          type: "module",
-        }),
-    ),
+    BrowserWorker.layerPlatform(() => {
+      const worker = new globalThis.Worker(new URL("../worker/main.ts", import.meta.url), {
+        type: "module",
+      });
+      return worker;
+    }),
   ),
 );
