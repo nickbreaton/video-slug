@@ -118,10 +118,10 @@ const videoDownloadAtom = runtime.fn(
     return Effect.gen(function* () {
       const client = yield* RpcClient.make(WorkerRpcs);
       const stream = client.FetchVideo({ id });
+      const invalidate = Reactivity.invalidate(["download", id]);
 
-      yield* stream.pipe(Stream.runForEach(() => Reactivity.invalidate(["download", id])));
-
-      yield* Reactivity.invalidate(["download", id]);
+      yield* stream.pipe(Stream.runForEach(() => invalidate));
+      yield* Effect.addFinalizer(() => invalidate);
     });
   },
   { concurrent: true },
