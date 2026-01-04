@@ -113,12 +113,14 @@ const deleteLocalVideoAtom = runtime.fn((id: string) => {
   });
 });
 
-const videoDownloadAtom = runtime.fn((id: string) => {
-  return Effect.gen(function* () {
-    const client = yield* RpcClient.make(WorkerRpcs);
-    const stream = client.FetchVideo({ id });
-    return stream.pipe(Stream.tap(() => Reactivity.invalidate(["download", id])));
-  }).pipe(Stream.unwrapScoped);
+const videoDownloadAtom = Atom.family((id: string) => {
+  return runtime.fn(() => {
+    return Effect.gen(function* () {
+      const client = yield* RpcClient.make(WorkerRpcs);
+      const stream = client.FetchVideo({ id });
+      return stream.pipe(Stream.tap(() => Reactivity.invalidate(["download", id])));
+    }).pipe(Stream.unwrapScoped);
+  });
 });
 
 function DownloadLineItem({ video }: { video: EnhancedVideoInfo }) {
@@ -131,7 +133,7 @@ function DownloadLineItem({ video }: { video: EnhancedVideoInfo }) {
 
   const deleteLocalVideo = useAtomSet(deleteLocalVideoAtom);
 
-  const downloadToLocal = useAtomSet(videoDownloadAtom, {
+  const downloadToLocal = useAtomSet(videoDownloadAtom(video.info.id), {
     mode: "promise",
   });
 
@@ -155,7 +157,7 @@ function DownloadLineItem({ video }: { video: EnhancedVideoInfo }) {
               ) : (
                 <button
                   className="border border-neutral-6 p-2"
-                  onClick={async () => downloadToLocal(video.info.id).then(console.log, console.error)}
+                  onClick={async () => downloadToLocal().then(console.log, console.error)}
                 >
                   {value ? `Downloading... (${value}%)` : "Download"}
                 </button>
