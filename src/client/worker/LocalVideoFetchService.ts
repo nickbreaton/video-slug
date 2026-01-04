@@ -71,9 +71,8 @@ export class LocalVideoFetchService extends Effect.Service<LocalVideoFetchServic
         const initialProgress = Option.map(blob, (value) => value.size).pipe(Option.getOrElse(() => 0));
 
         const progress = yield* SubscriptionRef.make(initialProgress);
-        const fiber = yield* Effect.fork(fetch(id, progress));
 
-        return progress.changes.pipe(Stream.interruptWhen(Fiber.join(fiber)));
+        return progress.changes.pipe(Stream.haltWhen(fetch(id, progress)));
       }).pipe(Stream.unwrapScoped);
 
     return { fetch: fetchStream };
