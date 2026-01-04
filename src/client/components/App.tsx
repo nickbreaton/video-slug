@@ -1,4 +1,5 @@
 import { FetchHttpClient } from "@effect/platform";
+import * as BrowserWorker from "@effect/platform-browser/BrowserWorker";
 import { Effect, Layer, Option, Stream } from "effect";
 import { Atom, useAtomValue, useAtomSet, Result } from "@effect-atom/atom-react";
 import { Add01Icon } from "hugeicons-react";
@@ -8,7 +9,7 @@ import { LocalVideoRepository } from "../services/LocalVideoRepository";
 import { VideoSlugRpcClient } from "../services/DownloadClient";
 import { LocalBlobService } from "../services/LocalBlobService";
 import { WorkerRpcClientLive } from "../services/WorkerRpcClient";
-import { RpcClient } from "@effect/rpc";
+import { RpcClient, RpcSerialization } from "@effect/rpc";
 import { WorkerRpcs } from "@/schema/worker";
 
 const videosAtom = VideoSlugRpcClient.query("GetVideos", void 0, { reactivityKeys: ["videos"] });
@@ -116,10 +117,24 @@ const deleteLocalVideoAtom = runtime.fn((id: string) => {
 const videoDownloadAtom = Atom.family((id: string) => {
   return runtime.fn(() => {
     return Effect.gen(function* () {
-      const client = yield* RpcClient.make(WorkerRpcs);
+      // Create a fresh worker protocol for this download
+      const protocol = yield* RpcClient.makeProtocolWorker({ size: 1 });
+      const client = yield* RpcClient.make(WorkerRpcs).pipe(
+        Effect.provide(Layer.succeed(RpcClient.Protocol, protocol)),
+      );
       const stream = client.FetchVideo({ id });
       return stream.pipe(Stream.tap(() => Reactivity.invalidate(["download", id])));
-    }).pipe(Stream.unwrapScoped);
+    }).pipe(
+      Effect.provide(
+        // Create a dedicated worker for each download to avoid concurrent stream bug (potentially) in @effect/rpc worker protocol
+        BrowserWorker.layerPlatform(() => {
+          return new globalThis.Worker(new URL("../worker/main.ts", import.meta.url), {
+            type: "module",
+          });
+        }),
+      ),
+      Stream.unwrapScoped,
+    );
   });
 });
 

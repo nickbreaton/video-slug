@@ -6,8 +6,8 @@ import { WorkerRpcs } from "@/schema/worker";
 export const WorkerRpcClientLive = RpcClient.layerProtocolWorker({
   minSize: 0,
   maxSize: 10,
-  timeToLive: "0 millis",
-  concurrency: 1,
+  timeToLive: "5 minutes",
+  concurrency: 10,
 }).pipe(
   Layer.provide(
     BrowserWorker.layerPlatform(() => {
