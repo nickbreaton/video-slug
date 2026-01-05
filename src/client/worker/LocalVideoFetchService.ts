@@ -31,6 +31,7 @@ export class LocalVideoFetchService extends Effect.Service<LocalVideoFetchServic
               .get(`/api/videos/${id}`, {
                 headers: {
                   Range: `bytes=${progressValue}-${progressValue + chunkSize}`,
+                  "Cache-Control": "no-store",
                 },
               })
               .pipe(Effect.mapError((error) => new VideoFetchError({ reason: error.message }))),
