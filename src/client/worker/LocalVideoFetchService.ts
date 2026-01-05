@@ -16,7 +16,7 @@ export class LocalVideoFetchService extends Effect.Service<LocalVideoFetchServic
     const localBlobWriterService = yield* LocalBlobWriterService;
 
     const fetch = Effect.fn(function* (id: string, progress: SubscriptionRef.SubscriptionRef<number>) {
-      const chunkSize = 1024 * 1024 * 5;
+      const chunkSize = 1024 * 1024; // 1 MB
 
       let prevWriteFiber: Fiber.Fiber<void, "TODO_OPFSWriteError"> | undefined;
 
