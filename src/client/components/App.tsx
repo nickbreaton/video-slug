@@ -11,6 +11,7 @@ import { LocalBlobService } from "../services/LocalBlobService";
 import { RpcClient, RpcSerialization } from "@effect/rpc";
 import { WorkerRpcs } from "@/schema/worker";
 import WorkerModule from "../worker/main.ts?worker";
+import { Link, Route, Router, Switch } from "wouter";
 
 const videosAtom = VideoSlugRpcClient.query("GetVideos", void 0, { reactivityKeys: ["videos"] });
 
@@ -149,7 +150,10 @@ function DownloadLineItem({ video }: { video: EnhancedVideoInfo }) {
 
   return (
     <li>
-      {video.info.title} <span className="text-neutral-10">({video.status})</span>
+      <Link href={`/video/${video.info.id}`} className="hover:underline">
+        {video.info.title}
+      </Link>{" "}
+      <span className="text-neutral-10">({video.status})</span>
       {video.status === "complete" && (
         <div className="inline-block">
           {Result.match(localDownloadProgressResult, {
@@ -195,7 +199,7 @@ const deleteAllLocalVideosAtom = runtime.fn(() => {
   });
 });
 
-export default function HomePage() {
+function HomePage() {
   // Use the videos atom - this will automatically fetch on mount
   const videosResult = useAtomValue(cachedVideosAtom);
 
@@ -238,5 +242,27 @@ export default function HomePage() {
           videosResult.value.map((video) => <DownloadLineItem key={video.info.id} video={video} />)}
       </ul>
     </div>
+  );
+}
+
+function VideoPage({ params }: { params: { id: string } }) {
+  return (
+    <div>
+      <Link href="/" className="text-blue-600 hover:underline">
+        ← Back to Home
+      </Link>
+      <h1 className="text-2xl font-bold mt-4">Video: {params.id}</h1>
+    </div>
+  );
+}
+
+export default function App() {
+  return (
+    <Router>
+      <Switch>
+        <Route path="/" component={HomePage} />
+        <Route path="/video/:id" component={VideoPage} />
+      </Switch>
+    </Router>
   );
 }
