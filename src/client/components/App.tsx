@@ -11,6 +11,7 @@ import { LocalBlobService } from "../services/LocalBlobService";
 import { WorkerRpcClientLive } from "../services/WorkerRpcClient";
 import { RpcClient, RpcSerialization } from "@effect/rpc";
 import { WorkerRpcs } from "@/schema/worker";
+import WorkerModule from "../worker/main.ts?worker";
 
 const videosAtom = VideoSlugRpcClient.query("GetVideos", void 0, { reactivityKeys: ["videos"] });
 
@@ -127,11 +128,7 @@ const videoDownloadAtom = Atom.family((id: string) => {
     }).pipe(
       Effect.provide(
         // Create a dedicated worker for each download to avoid concurrent stream bug (potentially) in @effect/rpc worker protocol
-        BrowserWorker.layerPlatform(() => {
-          return new globalThis.Worker(new URL("../worker/main.ts", import.meta.url), {
-            type: "module",
-          });
-        }),
+        BrowserWorker.layerPlatform(() => new WorkerModule()),
       ),
       Stream.unwrapScoped,
     );
