@@ -11,7 +11,8 @@ import { LocalBlobService } from "../services/LocalBlobService";
 import { RpcClient, RpcSerialization } from "@effect/rpc";
 import { WorkerRpcs } from "@/schema/worker";
 import WorkerModule from "../worker/main.ts?worker";
-import { Link, Route, Router, Switch } from "wouter";
+import { BrowserRouter, Link, Route, Routes, useParams } from "react-router-dom";
+import { Suspense } from "react";
 
 const videosAtom = VideoSlugRpcClient.query("GetVideos", void 0, { reactivityKeys: ["videos"] });
 
@@ -165,7 +166,7 @@ function DownloadLineItem({ video }: { video: EnhancedVideoInfo }) {
 
   return (
     <li>
-      <Link href={`/video/${video.info.id}`} className="hover:underline">
+      <Link to={`/video/${video.info.id}`} className="hover:underline">
         {video.info.title}
       </Link>{" "}
       <span className="text-neutral-10">({video.status})</span>
@@ -216,7 +217,7 @@ const deleteAllLocalVideosAtom = runtime.fn(() => {
 
 function HomePage() {
   // Use the videos atom - this will automatically fetch on mount
-  const videosResult = useAtomValue(cachedVideosAtom);
+  const videosResult = useAtomSuspense(cachedVideosAtom);
 
   // Get the download function
   const download = useAtomSet(downloadAtom);
@@ -260,12 +261,13 @@ function HomePage() {
   );
 }
 
-function VideoPage({ params }: { params: { id: string } }) {
-  const localVideoUrlResult = useAtomSuspense(localVideoUrl(params.id));
+function VideoPage() {
+  const params = useParams<{ id: string }>();
+  const localVideoUrlResult = useAtomSuspense(localVideoUrl(params.id!));
 
   return (
     <div>
-      <Link href="/" className={`hover:underline`}>
+      <Link to="/" className={`hover:underline`}>
         ← Back to Home
       </Link>
       <h1 className="mt-4 text-2xl font-bold">Video: {params.id}</h1>
@@ -278,11 +280,13 @@ function VideoPage({ params }: { params: { id: string } }) {
 
 export default function App() {
   return (
-    <Router>
-      <Switch>
-        <Route path="/" component={HomePage} />
-        <Route path="/video/:id" component={VideoPage} />
-      </Switch>
-    </Router>
+    <Suspense fallback={<div>Loading...</div>}>
+      <BrowserRouter>
+        <Routes>
+          <Route path="/" element={<HomePage />} />
+          <Route path="/video/:id" element={<VideoPage />} />
+        </Routes>
+      </BrowserRouter>
+    </Suspense>
   );
 }
