@@ -1,7 +1,7 @@
 import { FetchHttpClient } from "@effect/platform";
 import * as BrowserWorker from "@effect/platform-browser/BrowserWorker";
 import { Effect, Layer, Option, Stream } from "effect";
-import { Atom, useAtomValue, useAtomSet, Result } from "@effect-atom/atom-react";
+import { Atom, useAtomValue, useAtomSet, Result, useAtomSuspense } from "@effect-atom/atom-react";
 import { Add01Icon } from "hugeicons-react";
 import { Reactivity } from "@effect/experimental";
 import { EnhancedVideoInfo } from "@/schema/videos";
@@ -101,8 +101,23 @@ const openLocalVideoAtom = runtime.fn((id: string) => {
       document.body.appendChild(video);
       video.src = URL.createObjectURL(blob.value);
     }
+  });
+});
 
-    yield* Reactivity.invalidate(["download", id]);
+const localVideoUrl = Atom.family((id: string) => {
+  return runtime.atom(() => {
+    return Effect.gen(function* () {
+      const localBlobService = yield* LocalBlobService;
+      const blob = yield* localBlobService.get(id);
+
+      if (Option.isSome(blob)) {
+        const url = URL.createObjectURL(blob.value);
+        yield* Effect.addFinalizer(() => Effect.sync(() => URL.revokeObjectURL(url)));
+        return url;
+      }
+
+      return null;
+    });
   });
 });
 
@@ -246,12 +261,17 @@ function HomePage() {
 }
 
 function VideoPage({ params }: { params: { id: string } }) {
+  const localVideoUrlResult = useAtomSuspense(localVideoUrl(params.id));
+
   return (
     <div>
-      <Link href="/" className="text-blue-600 hover:underline">
+      <Link href="/" className={`hover:underline`}>
         ← Back to Home
       </Link>
-      <h1 className="text-2xl font-bold mt-4">Video: {params.id}</h1>
+      <h1 className="mt-4 text-2xl font-bold">Video: {params.id}</h1>
+      {Result.isSuccess(localVideoUrlResult) && localVideoUrlResult.value && (
+        <video src={localVideoUrlResult.value} controls autoPlay />
+      )}
     </div>
   );
 }
