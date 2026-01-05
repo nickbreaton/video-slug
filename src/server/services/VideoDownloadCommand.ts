@@ -1,6 +1,6 @@
 import { DownloadMessage, VideoNotFoundError, YtDlpOutput } from "@/schema/videos";
 import { Command, CommandExecutor } from "@effect/platform";
-import { Effect, Schema, Stream } from "effect";
+import { Config, Effect, Schema, Stream } from "effect";
 import { VideoDirectoryService } from "@/server/services/VideoDirectoryService";
 
 export class VideoDownloadCommand extends Effect.Service<VideoDownloadCommand>()("VideoDownloadCommand", {
@@ -8,6 +8,7 @@ export class VideoDownloadCommand extends Effect.Service<VideoDownloadCommand>()
   effect: Effect.gen(function* () {
     const exec = yield* CommandExecutor.CommandExecutor;
     const { videosDir } = yield* VideoDirectoryService;
+    const ytDlpPath = yield* Config.string("YT_DLP_PATH").pipe(Config.withDefault("yt-dlp"));
 
     const download = function (url: URL) {
       const progressTemplate = [
@@ -22,7 +23,7 @@ export class VideoDownloadCommand extends Effect.Service<VideoDownloadCommand>()
       ].join(" ");
 
       const command = Command.make(
-        "yt-dlp",
+        ytDlpPath,
         url.href,
         "--newline",
         "--progress",
