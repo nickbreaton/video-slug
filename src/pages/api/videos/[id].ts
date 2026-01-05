@@ -21,13 +21,13 @@ const runtime = ManagedRuntime.make(
   memoMap,
 );
 
+// TODO: Don't forget about this file when implementing Auth. Its the only one not implemented as an RPC.
+
 export const GET: APIRoute = async ({ request, params }) => {
   const getVideoFilePath = Effect.gen(function* () {
     const { videosDir } = yield* VideoDirectoryService;
     const videoRepo = yield* VideoRepo;
     const path = yield* Path.Path;
-
-    yield* Effect.logWarning("Video download endpoint is still unsecured, do so before launching");
 
     if (!params["id"]) {
       return yield* Effect.dieMessage("Missing video ID");
