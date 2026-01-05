@@ -8,7 +8,7 @@
     "dev:ssl": "BASIC_SSL=1 bunx --bun astro dev --host --port 5432",
     "build": "bunx --bun astro build",
     "preview": "bunx --bun astro preview",
-    "start": "bun --bun run preview",
+    "start": "bun run dist/server/entry.mjs",
     "lint": "eslint",
     "check": "astro check"
   },
