@@ -8,7 +8,6 @@ import { EnhancedVideoInfo } from "@/schema/videos";
 import { LocalVideoRepository } from "../services/LocalVideoRepository";
 import { VideoSlugRpcClient } from "../services/DownloadClient";
 import { LocalBlobService } from "../services/LocalBlobService";
-import { WorkerRpcClientLive } from "../services/WorkerRpcClient";
 import { RpcClient, RpcSerialization } from "@effect/rpc";
 import { WorkerRpcs } from "@/schema/worker";
 import WorkerModule from "../worker/main.ts?worker";
@@ -20,7 +19,6 @@ const runtime = Atom.runtime(
     Layer.merge(Layer.orDie(LocalVideoRepository.Default)),
     Layer.provide(FetchHttpClient.layer),
     Layer.provideMerge(LocalBlobService.Default),
-    Layer.merge(WorkerRpcClientLive),
   ),
 );
 
