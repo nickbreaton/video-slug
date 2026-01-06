@@ -165,19 +165,40 @@ function DownloadLineItem({ video }: { video: EnhancedVideoInfo }) {
   });
 
   return (
-    <li className="border-b border-neutral-6 last:border-b-0">
-      <div className="flex flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+    <li
+      className={`
+        list-none border-b border-neutral-6
+        last:border-b-0
+      `}
+    >
+      <div
+        className={`
+          flex flex-col gap-3 px-4 py-4
+          sm:flex-row sm:items-center sm:justify-between sm:gap-4
+        `}
+      >
         <div className="flex min-w-0 flex-1 flex-col gap-1">
-          <div className="flex gap-3 sm:gap-4">
+          <div
+            className={`
+              flex gap-3
+              sm:gap-4
+            `}
+          >
             {video.info.thumbnail && (
               <img
-                src={video.info.thumbnail}
+                src={`/api/thumbnails/${video.info.id}`}
                 alt=""
-                className="h-20 w-20 flex-shrink-0 rounded-sm object-cover border border-neutral-6"
+                className="h-20 w-20 shrink-0 rounded-sm border border-neutral-6 object-cover"
               />
             )}
             <div className="flex min-w-0 flex-1 flex-col gap-1">
-              <Link to={`/video/${video.info.id}`} className="font-medium text-neutral-11 hover:text-neutral-12 hover:underline">
+              <Link
+                to={`/video/${video.info.id}`}
+                className={`
+                  font-medium text-neutral-11
+                  hover:text-neutral-12 hover:underline
+                `}
+              >
                 {video.info.title}
               </Link>
               <span className="text-xs text-neutral-10">({video.status})</span>
@@ -195,12 +216,25 @@ function DownloadLineItem({ video }: { video: EnhancedVideoInfo }) {
               onInitial: () => null,
               onSuccess: ({ value }) =>
                 value === 100 ? (
-                  <button className="border border-neutral-6 bg-neutral-2 px-3 py-1.5 text-sm text-neutral-11 transition-all hover:border-neutral-7 hover:bg-neutral-3 active:bg-neutral-4" onClick={async () => deleteLocalVideo(video.info.id)}>
+                  <button
+                    className={`
+                      border border-neutral-6 bg-neutral-2 px-3 py-1.5 text-sm text-neutral-11
+                      transition-all
+                      hover:border-neutral-7 hover:bg-neutral-3
+                      active:bg-neutral-4
+                    `}
+                    onClick={async () => deleteLocalVideo(video.info.id)}
+                  >
                     🗑️
                   </button>
                 ) : (
                   <button
-                    className="border border-neutral-6 bg-neutral-2 px-3 py-1.5 text-sm text-neutral-11 transition-all hover:border-neutral-7 hover:bg-neutral-3 active:bg-neutral-4"
+                    className={`
+                      border border-neutral-6 bg-neutral-2 px-3 py-1.5 text-sm text-neutral-11
+                      transition-all
+                      hover:border-neutral-7 hover:bg-neutral-3
+                      active:bg-neutral-4
+                    `}
                     onClick={async () => downloadToLocal().then(console.log, console.error)}
                   >
                     {value ? `Downloading... (${value}%)` : "Download"}
@@ -244,17 +278,47 @@ function HomePage() {
   return (
     <div className="min-h-screen bg-neutral-1">
       <div className="mx-auto max-w-4xl">
-        <div className="border-x border-neutral-6 border-t border-neutral-6">
-          <header className="flex items-center justify-between px-4 py-4 sm:px-6 sm:py-5">
-            <h1 className="text-lg font-medium text-neutral-12 sm:text-xl">VideoSlug</h1>
-            <div className="flex items-center gap-2 sm:gap-3">
-              <button className="border border-neutral-6 bg-neutral-2 px-3 py-1.5 text-sm text-neutral-11 transition-all hover:border-neutral-7 hover:bg-neutral-3 active:bg-neutral-4 sm:px-4 sm:py-2 sm:text-sm" onClick={() => deleteAllLocalVideos()}>
+        <div className="border-x border-t border-neutral-6">
+          <header
+            className={`
+              flex items-center justify-between px-4 py-4
+              sm:px-6 sm:py-5
+            `}
+          >
+            <h1
+              className={`
+                text-lg font-medium text-neutral-12
+                sm:text-xl
+              `}
+            >
+              VideoSlug
+            </h1>
+            <div
+              className={`
+                flex items-center gap-2
+                sm:gap-3
+              `}
+            >
+              <button
+                className={`
+                  border border-neutral-6 bg-neutral-2 px-3 py-1.5 text-sm text-neutral-11
+                  transition-all
+                  hover:border-neutral-7 hover:bg-neutral-3
+                  active:bg-neutral-4
+                  sm:px-4 sm:py-2 sm:text-sm
+                `}
+                onClick={() => deleteAllLocalVideos()}
+              >
                 Delete all
               </button>
               <button
                 onClick={handleClick}
                 className={`
-                  flex items-center justify-center border border-neutral-6 bg-neutral-2 p-2 text-neutral-11 transition-all hover:border-neutral-7 hover:bg-neutral-3 active:bg-neutral-4 sm:p-2.5
+                  flex items-center justify-center border border-neutral-6 bg-neutral-2 p-2
+                  text-neutral-11 transition-all
+                  hover:border-neutral-7 hover:bg-neutral-3
+                  active:bg-neutral-4
+                  sm:p-2.5
                 `}
               >
                 <span className="sr-only">Add video</span>
@@ -264,7 +328,12 @@ function HomePage() {
           </header>
         </div>
 
-        <main className="divide-y divide-neutral-6 border-x border-neutral-6 sm:border-x">
+        <main
+          className={`
+            divide-y divide-neutral-6 border-x border-neutral-6
+            sm:border-x
+          `}
+        >
           {videosResult._tag === "Success" &&
             videosResult.value.map((video) => <DownloadLineItem key={video.info.id} video={video} />)}
           {videosResult._tag === "Success" && videosResult.value.length === 0 && (
@@ -288,16 +357,37 @@ function VideoPage() {
   return (
     <div className="min-h-screen bg-neutral-1">
       <div className="mx-auto max-w-4xl">
-        <div className="border-x border-neutral-6 border-t border-neutral-6">
-          <header className="flex items-center gap-2 px-4 py-4 sm:px-6 sm:py-5">
-            <Link to="/" className="text-sm text-neutral-11 hover:text-neutral-12 hover:underline">
+        <div className="border-x border-t border-neutral-6">
+          <header
+            className={`
+              flex items-center gap-2 px-4 py-4
+              sm:px-6 sm:py-5
+            `}
+          >
+            <Link
+              to="/"
+              className={`
+                text-sm text-neutral-11
+                hover:text-neutral-12 hover:underline
+              `}
+            >
               ← Back
             </Link>
           </header>
         </div>
 
-        <main className="border-x border-neutral-6 px-4 py-6 sm:px-6 sm:py-8">
-          <h1 className="mb-6 border-b border-neutral-6 pb-4 text-xl font-medium text-neutral-12 sm:text-2xl">
+        <main
+          className={`
+            border-x border-neutral-6 px-4 py-6
+            sm:px-6 sm:py-8
+          `}
+        >
+          <h1
+            className={`
+              mb-6 border-b border-neutral-6 pb-4 text-xl font-medium text-neutral-12
+              sm:text-2xl
+            `}
+          >
             Video: {params.id}
           </h1>
           <div className="bg-neutral-2">
@@ -311,11 +401,11 @@ function VideoPage() {
 
 export default function App() {
   return (
-    <Suspense fallback={
-      <div className="flex min-h-screen items-center justify-center bg-neutral-1 text-neutral-11">
-        Loading...
-      </div>
-    }>
+    <Suspense
+      fallback={
+        <div className="flex min-h-screen items-center justify-center bg-neutral-1 text-neutral-11">Loading...</div>
+      }
+    >
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<HomePage />} />
