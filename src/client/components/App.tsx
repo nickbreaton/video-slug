@@ -177,9 +177,6 @@ function DownloadLineItem({ video }: { video: EnhancedVideoInfo }) {
             onSuccess: ({ value }) =>
               value === 100 ? (
                 <span className="space-x-2">
-                  <button className="border border-neutral-6 p-2" onClick={async () => openLocalVideo(video.info.id)}>
-                    Open
-                  </button>
                   <button className="border border-neutral-6 p-2" onClick={async () => deleteLocalVideo(video.info.id)}>
                     🗑️
                   </button>
@@ -265,15 +262,15 @@ function VideoPage() {
   const params = useParams<{ id: string }>();
   const localVideoUrlResult = useAtomSuspense(localVideoUrl(params.id!));
 
+  const videoSrc = Result.getOrElse(localVideoUrlResult, () => null) ?? `/api/videos/${params.id}`;
+
   return (
     <div>
       <Link to="/" className={`hover:underline`}>
         ← Back to Home
       </Link>
       <h1 className="mt-4 text-2xl font-bold">Video: {params.id}</h1>
-      {Result.isSuccess(localVideoUrlResult) && localVideoUrlResult.value && (
-        <video src={localVideoUrlResult.value} controls autoPlay />
-      )}
+      <video src={videoSrc} controls />
     </div>
   );
 }
