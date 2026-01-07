@@ -1,7 +1,4 @@
-import { FetchHttpClient } from "@effect/platform";
-import * as BrowserWorker from "@effect/platform-browser/BrowserWorker";
-import { Effect, Layer, Option, Stream } from "effect";
-import { Atom, useAtomValue, useAtomSet, Result, useAtomSuspense } from "@effect-atom/atom-react";
+import { useAtomValue, useAtomSet, useAtomSuspense, Result } from "@effect-atom/atom-react";
 import {
   Add01Icon,
   ArrowLeft01Icon,
@@ -11,16 +8,20 @@ import {
   Loading03Icon,
   AlertCircleIcon,
 } from "hugeicons-react";
-import { Reactivity } from "@effect/experimental";
 import { EnhancedVideoInfo } from "@/schema/videos";
-import { LocalVideoRepository } from "../services/LocalVideoRepository";
-import { VideoSlugRpcClient } from "../services/DownloadClient";
-import { LocalBlobService } from "../services/LocalBlobService";
-import { RpcClient, RpcSerialization } from "@effect/rpc";
-import { WorkerRpcs } from "@/schema/worker";
-import WorkerModule from "../worker/main.ts?worker";
 import { BrowserRouter, Link, Route, Routes, useParams } from "react-router-dom";
 import { Suspense, type ReactNode } from "react";
+import {
+  cachedVideosAtom,
+  deleteAllLocalVideosAtom,
+  deleteLocalVideoAtom,
+  downloadAtom,
+  getDownloadProgressByIdAtom,
+  getLocalDownloadProgressAtom,
+  getVideoByIdAtom,
+  localVideoUrl,
+  videoDownloadAtom,
+} from "./atoms";
 
 // Helper functions
 function formatDuration(seconds: number | null | undefined): string {
@@ -123,152 +124,6 @@ function Separator() {
     />
   );
 }
-
-const videosAtom = VideoSlugRpcClient.query("GetVideos", void 0, { reactivityKeys: ["videos"] });
-
-const runtime = Atom.runtime(
-  VideoSlugRpcClient.layer.pipe(
-    Layer.merge(Layer.orDie(LocalVideoRepository.Default)),
-    Layer.provide(FetchHttpClient.layer),
-    Layer.provideMerge(LocalBlobService.Default),
-  ),
-);
-
-const cachedVideosAtom = runtime.atom((get) => {
-  return Effect.gen(function* () {
-    const localVideoRepository = yield* LocalVideoRepository;
-    const cache = yield* localVideoRepository.get();
-
-    const cacheStream = Option.isSome(cache) ? Stream.make(cache.value) : Stream.empty;
-
-    const serverStream = get.streamResult(videosAtom).pipe(
-      Stream.tap((value) => {
-        return localVideoRepository.set(value as EnhancedVideoInfo[]);
-      }),
-      Stream.catchAll((error) => {
-        console.log(
-          "TODO: Throw a toast or something to inform user of error but still keep online working well",
-          error,
-        );
-        return Stream.empty;
-      }),
-    );
-
-    return Stream.concat(cacheStream, serverStream);
-  }).pipe(Stream.unwrap);
-});
-
-const downloadAtom = VideoSlugRpcClient.runtime.fn(
-  Effect.fnUntraced(function* (url: string) {
-    const client = yield* VideoSlugRpcClient;
-
-    const videoInfo = yield* client("SaveVideo", {
-      url: new URL(url),
-    });
-
-    yield* Reactivity.invalidate(["videos"]);
-
-    return videoInfo;
-  }),
-);
-
-// Atom to get a single video by ID from the cached videos
-const getVideoByIdAtom = Atom.family((id: string) => {
-  return runtime.atom((get) => {
-    return get.streamResult(cachedVideosAtom).pipe(
-      Stream.map((videos) => videos.find((v) => v.info.id === id)),
-      Stream.filter((v): v is EnhancedVideoInfo => v !== undefined),
-    );
-  });
-});
-
-const getDownloadProgressByIdAtom = Atom.family((id: string | null) => {
-  return runtime.atom(
-    id == null
-      ? Stream.empty
-      : Effect.gen(function* () {
-          const client = yield* VideoSlugRpcClient;
-          return client("GetDownloadProgress", { id });
-        }).pipe(Stream.unwrap, Stream.onEnd(Reactivity.invalidate(["videos"]))),
-  );
-});
-
-const getLocalDownloadProgressAtom = Atom.family((video: EnhancedVideoInfo) => {
-  return runtime
-    .atom(
-      Effect.gen(function* () {
-        const localBlobService = yield* LocalBlobService;
-        const file = yield* localBlobService.get(video.info.id);
-
-        if (Option.isNone(file) || !video.totalBytes) {
-          return 0;
-        }
-
-        return Math.round((file.value.size / video.totalBytes) * 100);
-      }),
-    )
-    .pipe(Atom.withReactivity(["download", video.info.id]));
-});
-
-const openLocalVideoAtom = runtime.fn((id: string) => {
-  return Effect.gen(function* () {
-    const localBlobService = yield* LocalBlobService;
-
-    const blob = yield* localBlobService.get(id);
-
-    if (Option.isSome(blob)) {
-      const video = document.createElement("video");
-      video.controls = true;
-      document.body.appendChild(video);
-      video.src = URL.createObjectURL(blob.value);
-    }
-  });
-});
-
-const localVideoUrl = Atom.family((id: string) => {
-  return runtime.atom(() => {
-    return Effect.gen(function* () {
-      const localBlobService = yield* LocalBlobService;
-      const blob = yield* localBlobService.get(id);
-
-      if (Option.isSome(blob)) {
-        const url = URL.createObjectURL(blob.value);
-        yield* Effect.addFinalizer(() => Effect.sync(() => URL.revokeObjectURL(url)));
-        return url;
-      }
-
-      return null;
-    });
-  });
-});
-
-const deleteLocalVideoAtom = runtime.fn((id: string) => {
-  return Effect.gen(function* () {
-    const localBlobService = yield* LocalBlobService;
-    yield* localBlobService.delete(id);
-    yield* Reactivity.invalidate(["download", id]);
-  });
-});
-
-const videoDownloadAtom = Atom.family((id: string) => {
-  return runtime.fn(() => {
-    return Effect.gen(function* () {
-      // Create a fresh worker protocol for this download
-      const protocol = yield* RpcClient.makeProtocolWorker({ size: 1 });
-      const client = yield* RpcClient.make(WorkerRpcs).pipe(
-        Effect.provide(Layer.succeed(RpcClient.Protocol, protocol)),
-      );
-      const stream = client.FetchVideo({ id });
-      return stream.pipe(Stream.tap(() => Reactivity.invalidate(["download", id])));
-    }).pipe(
-      Effect.provide(
-        // Create a dedicated worker for each download to avoid concurrent stream bug (potentially) in @effect/rpc worker protocol
-        BrowserWorker.layerPlatform(() => new WorkerModule()),
-      ),
-      Stream.unwrapScoped,
-    );
-  });
-});
 
 function DownloadLineItem({ video, isLast }: { video: EnhancedVideoInfo; isLast: boolean }) {
   const serverDownloadProgress = useAtomValue(
@@ -398,7 +253,7 @@ function DownloadLineItem({ video, isLast }: { video: EnhancedVideoInfo; isLast:
                   </button>
                 ) : !isLocalDownloading ? (
                   <button
-                    onClick={() => downloadToLocal().then(console.log, console.error)}
+                    onClick={() => downloadToLocal()}
                     className={`
                       flex items-center justify-center p-2 text-neutral-10 transition-colors
                       hover:bg-neutral-3 hover:text-neutral-11
@@ -417,14 +272,6 @@ function DownloadLineItem({ video, isLast }: { video: EnhancedVideoInfo; isLast:
     </>
   );
 }
-
-const deleteAllLocalVideosAtom = runtime.fn(() => {
-  return Effect.gen(function* () {
-    const localBlobService = yield* LocalBlobService;
-    yield* localBlobService.deleteAll();
-    yield* Reactivity.invalidate(["download"]);
-  });
-});
 
 function HomePage() {
   const videosResult = useAtomSuspense(cachedVideosAtom);
@@ -596,7 +443,7 @@ function VideoPage() {
                   </button>
                 ) : (
                   <button
-                    onClick={() => downloadToLocal().then(console.log, console.error)}
+                    onClick={() => downloadToLocal()}
                     className={`
                       flex items-center gap-2 border border-neutral-6 bg-neutral-2 px-3 py-1.5
                       text-sm text-neutral-11 transition-colors
