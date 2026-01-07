@@ -7,7 +7,7 @@ import {
   ArrowLeft01Icon,
   CheckmarkCircle02Icon,
   Delete01Icon,
-  Download01Icon,
+  DownloadSquare01Icon,
   Loading03Icon,
   AlertCircleIcon,
 } from "hugeicons-react";
@@ -405,7 +405,7 @@ function DownloadLineItem({ video, isLast }: { video: EnhancedVideoInfo; isLast:
                     `}
                     title="Save to device"
                   >
-                    <Download01Icon size={16} strokeWidth={2} />
+                    <DownloadSquare01Icon size={16} strokeWidth={2} />
                   </button>
                 ) : null}
               </>
@@ -603,7 +603,7 @@ function VideoPage() {
                       hover:border-neutral-7 hover:bg-neutral-3
                     `}
                   >
-                    <Download01Icon size={14} />
+                    <DownloadSquare01Icon size={14} />
                     <span>Save to device</span>
                   </button>
                 )}
