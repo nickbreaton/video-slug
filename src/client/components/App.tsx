@@ -2,7 +2,17 @@ import { FetchHttpClient } from "@effect/platform";
 import * as BrowserWorker from "@effect/platform-browser/BrowserWorker";
 import { Effect, Layer, Option, Stream } from "effect";
 import { Atom, useAtomValue, useAtomSet, Result, useAtomSuspense } from "@effect-atom/atom-react";
-import { Add01Icon } from "hugeicons-react";
+import {
+  Add01Icon,
+  ArrowLeft01Icon,
+  CheckmarkCircle02Icon,
+  CloudDownloadIcon,
+  Delete01Icon,
+  Download01Icon,
+  Loading03Icon,
+  AlertCircleIcon,
+  Link01Icon,
+} from "hugeicons-react";
 import { Reactivity } from "@effect/experimental";
 import { EnhancedVideoInfo } from "@/schema/videos";
 import { LocalVideoRepository } from "../services/LocalVideoRepository";
@@ -12,7 +22,73 @@ import { RpcClient, RpcSerialization } from "@effect/rpc";
 import { WorkerRpcs } from "@/schema/worker";
 import WorkerModule from "../worker/main.ts?worker";
 import { BrowserRouter, Link, Route, Routes, useParams } from "react-router-dom";
-import { Suspense } from "react";
+import { Suspense, type ReactNode } from "react";
+
+// Helper functions
+function formatDuration(seconds: number | null | undefined): string {
+  if (seconds == null) return "";
+  const hrs = Math.floor(seconds / 3600);
+  const mins = Math.floor((seconds % 3600) / 60);
+  const secs = Math.floor(seconds % 60);
+  if (hrs > 0) {
+    return `${hrs}:${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
+  }
+  return `${mins}:${secs.toString().padStart(2, "0")}`;
+}
+
+function formatUploadDate(dateStr: string | null | undefined): string {
+  if (!dateStr || dateStr.length !== 8) return "";
+  const year = dateStr.slice(0, 4);
+  const month = parseInt(dateStr.slice(4, 6), 10) - 1;
+  const day = parseInt(dateStr.slice(6, 8), 10);
+  const date = new Date(parseInt(year, 10), month, day);
+  return date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+}
+
+// Layout component with sticky header
+function Layout({
+  children,
+  title,
+  leftAction,
+  rightActions,
+}: {
+  children: ReactNode;
+  title?: ReactNode;
+  leftAction?: ReactNode;
+  rightActions?: ReactNode;
+}) {
+  return (
+    <div className="min-h-screen bg-neutral-1">
+      <div className="mx-auto max-w-4xl">
+        {/* Sticky header - no top border on mobile (blends into safe area), bordered on desktop */}
+        <header
+          className="sticky top-0 z-50 border-b border-neutral-6 bg-neutral-1/95 backdrop-blur-sm sm:border-x sm:border-t"
+          style={{ paddingTop: "env(safe-area-inset-top)" }}
+        >
+          <div className="flex items-center justify-between px-4 py-3 sm:px-6 sm:py-4">
+            <div className="flex items-center gap-3">
+              {leftAction}
+              {title && (
+                <h1 className="text-base font-medium text-neutral-12 sm:text-lg">{title}</h1>
+              )}
+            </div>
+            {rightActions && (
+              <div className="flex items-center gap-2 sm:gap-3">{rightActions}</div>
+            )}
+          </div>
+        </header>
+
+        {/* Main content area */}
+        <main className="border-neutral-6 sm:border-x">{children}</main>
+      </div>
+    </div>
+  );
+}
+
+// Separator component - inset on mobile, full-width on desktop
+function Separator() {
+  return <div className="mx-4 border-b border-neutral-6 sm:mx-0" />;
+}
 
 const videosAtom = VideoSlugRpcClient.query("GetVideos", void 0, { reactivityKeys: ["videos"] });
 
@@ -61,6 +137,16 @@ const downloadAtom = VideoSlugRpcClient.runtime.fn(
     return videoInfo;
   }),
 );
+
+// Atom to get a single video by ID from the cached videos
+const getVideoByIdAtom = Atom.family((id: string) => {
+  return runtime.atom((get) => {
+    return get.streamResult(cachedVideosAtom).pipe(
+      Stream.map((videos) => videos.find((v) => v.info.id === id)),
+      Stream.filter((v): v is EnhancedVideoInfo => v !== undefined),
+    );
+  });
+});
 
 const getDownloadProgressByIdAtom = Atom.family((id: string | null) => {
   return runtime.atom(
@@ -150,102 +236,135 @@ const videoDownloadAtom = Atom.family((id: string) => {
   });
 });
 
-function DownloadLineItem({ video }: { video: EnhancedVideoInfo }) {
-  const result = useAtomValue(getDownloadProgressByIdAtom(video.status === "downloading" ? video.info.id : null));
+function DownloadLineItem({ video, isLast }: { video: EnhancedVideoInfo; isLast: boolean }) {
+  const serverDownloadProgress = useAtomValue(
+    getDownloadProgressByIdAtom(video.status === "downloading" ? video.info.id : null),
+  );
   const localDownloadProgressResult = useAtomValue(getLocalDownloadProgressAtom(video));
 
-  const openLocalVideo = useAtomSet(openLocalVideoAtom, {
-    mode: "promise",
-  });
-
   const deleteLocalVideo = useAtomSet(deleteLocalVideoAtom);
-
   const downloadToLocal = useAtomSet(videoDownloadAtom(video.info.id), {
     mode: "promise",
   });
 
+  // Compute local download state
+  const localProgress = Result.match(localDownloadProgressResult, {
+    onInitial: () => 0,
+    onSuccess: ({ value }) => value,
+    onFailure: () => 0,
+  });
+  const isOfflineReady = localProgress === 100;
+  const isLocalDownloading = localProgress > 0 && localProgress < 100;
+
+  // Build metadata string
+  const metaParts: string[] = [];
+  if (video.info.uploader) metaParts.push(video.info.uploader);
+  if (video.info.duration) metaParts.push(formatDuration(video.info.duration));
+
   return (
-    <li
-      className={`
-        list-none border-b border-neutral-6
-        last:border-b-0
-      `}
-    >
-      <div
-        className={`
-          flex flex-col gap-3 px-4 py-4
-          sm:flex-row sm:items-center sm:justify-between sm:gap-4
-        `}
-      >
-        <div className="flex min-w-0 flex-1 flex-col gap-1">
-          <div
-            className={`
-              flex gap-3
-              sm:gap-4
-            `}
-          >
-            {video.info.thumbnail && (
+    <>
+      <li className="list-none">
+        <div className="flex gap-3 px-4 py-3 sm:gap-4 sm:px-6 sm:py-4">
+          {/* Thumbnail */}
+          {video.info.thumbnail && (
+            <Link to={`/video/${video.info.id}`} className="shrink-0">
               <img
                 src={`/api/thumbnails/${video.info.id}`}
                 alt=""
-                className="h-20 w-20 shrink-0 rounded-sm border border-neutral-6 object-cover"
+                className="h-16 w-16 rounded object-cover sm:h-20 sm:w-20"
               />
+            </Link>
+          )}
+
+          {/* Content */}
+          <div className="flex min-w-0 flex-1 flex-col justify-center gap-1">
+            {/* Title */}
+            <Link
+              to={`/video/${video.info.id}`}
+              className="line-clamp-2 text-sm font-medium text-neutral-12 hover:underline"
+            >
+              {video.info.title}
+            </Link>
+
+            {/* Metadata row */}
+            {metaParts.length > 0 && (
+              <div className="flex items-center gap-1.5 text-xs text-neutral-10">
+                {video.info.uploader && <span>{video.info.uploader}</span>}
+                {video.info.uploader && video.info.duration && <span className="text-neutral-8">{"\u00B7"}</span>}
+                {video.info.duration && (
+                  <span className="font-mono text-neutral-9">{formatDuration(video.info.duration)}</span>
+                )}
+              </div>
             )}
-            <div className="flex min-w-0 flex-1 flex-col gap-1">
-              <Link
-                to={`/video/${video.info.id}`}
-                className={`
-                  font-medium text-neutral-11
-                  hover:text-neutral-12 hover:underline
-                `}
-              >
-                {video.info.title}
-              </Link>
-              <span className="text-xs text-neutral-10">({video.status})</span>
-              {result._tag === "Success" && (
-                <span className="text-xs text-neutral-10">
-                  {result.value.downloaded_bytes} / {result.value.total_bytes}
+
+            {/* Status row */}
+            <div className="flex items-center gap-2 text-xs">
+              {video.status === "downloading" && (
+                <span className="flex items-center gap-1 text-neutral-10">
+                  <Loading03Icon size={12} className="animate-spin" />
+                  <span>Adding to library</span>
+                  {serverDownloadProgress._tag === "Success" && (
+                    <span className="font-mono">
+                      {Math.round(
+                        (serverDownloadProgress.value.downloaded_bytes /
+                          serverDownloadProgress.value.total_bytes) *
+                          100,
+                      )}
+                      %
+                    </span>
+                  )}
+                </span>
+              )}
+              {video.status === "error" && (
+                <span className="flex items-center gap-1 text-neutral-10">
+                  <AlertCircleIcon size={12} />
+                  <span>Error</span>
+                </span>
+              )}
+              {video.status === "complete" && isOfflineReady && (
+                <span className="flex items-center gap-1 text-neutral-10">
+                  <CheckmarkCircle02Icon size={12} />
+                  <span>Offline</span>
+                </span>
+              )}
+              {video.status === "complete" && isLocalDownloading && (
+                <span className="flex items-center gap-1 text-neutral-10">
+                  <Loading03Icon size={12} className="animate-spin" />
+                  <span>Saving to device</span>
+                  <span className="font-mono">{localProgress}%</span>
                 </span>
               )}
             </div>
           </div>
-        </div>
-        {video.status === "complete" && (
-          <div className="flex shrink-0 gap-2">
-            {Result.match(localDownloadProgressResult, {
-              onInitial: () => null,
-              onSuccess: ({ value }) =>
-                value === 100 ? (
+
+          {/* Actions */}
+          <div className="flex shrink-0 items-center gap-1">
+            {video.status === "complete" && (
+              <>
+                {isOfflineReady ? (
                   <button
-                    className={`
-                      border border-neutral-6 bg-neutral-2 px-3 py-1.5 text-sm text-neutral-11
-                      transition-all
-                      hover:border-neutral-7 hover:bg-neutral-3
-                      active:bg-neutral-4
-                    `}
-                    onClick={async () => deleteLocalVideo(video.info.id)}
+                    onClick={() => deleteLocalVideo(video.info.id)}
+                    className="flex items-center justify-center p-2 text-neutral-10 transition-colors hover:bg-neutral-3 hover:text-neutral-11"
+                    title="Remove from device"
                   >
-                    🗑️
+                    <Delete01Icon size={16} strokeWidth={2} />
                   </button>
-                ) : (
+                ) : !isLocalDownloading ? (
                   <button
-                    className={`
-                      border border-neutral-6 bg-neutral-2 px-3 py-1.5 text-sm text-neutral-11
-                      transition-all
-                      hover:border-neutral-7 hover:bg-neutral-3
-                      active:bg-neutral-4
-                    `}
-                    onClick={async () => downloadToLocal().then(console.log, console.error)}
+                    onClick={() => downloadToLocal().then(console.log, console.error)}
+                    className="flex items-center justify-center p-2 text-neutral-10 transition-colors hover:bg-neutral-3 hover:text-neutral-11"
+                    title="Save to device"
                   >
-                    {value ? `Downloading... (${value}%)` : "Download"}
+                    <Download01Icon size={16} strokeWidth={2} />
                   </button>
-                ),
-              onFailure: (error) => JSON.stringify(error),
-            })}
+                ) : null}
+              </>
+            )}
           </div>
-        )}
-      </div>
-    </li>
+        </div>
+      </li>
+      {!isLast && <Separator />}
+    </>
   );
 }
 
@@ -258,144 +377,175 @@ const deleteAllLocalVideosAtom = runtime.fn(() => {
 });
 
 function HomePage() {
-  // Use the videos atom - this will automatically fetch on mount
   const videosResult = useAtomSuspense(cachedVideosAtom);
-
-  // Get the download function
   const download = useAtomSet(downloadAtom);
-
   const deleteAllLocalVideos = useAtomSet(deleteAllLocalVideosAtom);
 
-  const handleClick = () => {
+  const handleAddVideo = () => {
     const video = prompt("Enter video URL", "https://www.youtube.com/watch?v=3PFLeteDuyQ");
-
     if (!video) return;
-
-    // Trigger the download
     download(video);
   };
 
-  return (
-    <div className="min-h-screen bg-neutral-1">
-      <div className="mx-auto max-w-4xl">
-        <div className="border-x border-t border-neutral-6">
-          <header
-            className={`
-              flex items-center justify-between px-4 py-4
-              sm:px-6 sm:py-5
-            `}
-          >
-            <h1
-              className={`
-                text-lg font-medium text-neutral-12
-                sm:text-xl
-              `}
-            >
-              VideoSlug
-            </h1>
-            <div
-              className={`
-                flex items-center gap-2
-                sm:gap-3
-              `}
-            >
-              <button
-                className={`
-                  border border-neutral-6 bg-neutral-2 px-3 py-1.5 text-sm text-neutral-11
-                  transition-all
-                  hover:border-neutral-7 hover:bg-neutral-3
-                  active:bg-neutral-4
-                  sm:px-4 sm:py-2 sm:text-sm
-                `}
-                onClick={() => deleteAllLocalVideos()}
-              >
-                Delete all
-              </button>
-              <button
-                onClick={handleClick}
-                className={`
-                  flex items-center justify-center border border-neutral-6 bg-neutral-2 p-2
-                  text-neutral-11 transition-all
-                  hover:border-neutral-7 hover:bg-neutral-3
-                  active:bg-neutral-4
-                  sm:p-2.5
-                `}
-              >
-                <span className="sr-only">Add video</span>
-                <Add01Icon strokeWidth={2.5} size={16} />
-              </button>
-            </div>
-          </header>
-        </div>
+  const videos = videosResult._tag === "Success" ? videosResult.value : [];
 
-        <main
-          className={`
-            divide-y divide-neutral-6 border-x border-neutral-6
-            sm:border-x
-          `}
-        >
-          {videosResult._tag === "Success" &&
-            videosResult.value.map((video) => <DownloadLineItem key={video.info.id} video={video} />)}
-          {videosResult._tag === "Success" && videosResult.value.length === 0 && (
-            <div className="border-x border-neutral-6 px-6 py-12 text-center text-neutral-10">
-              <p className="mb-2">No videos yet</p>
-              <p className="text-sm">Add a video to get started</p>
-            </div>
-          )}
-        </main>
-      </div>
-    </div>
+  return (
+    <Layout
+      title="VideoSlug"
+      rightActions={
+        <>
+          <button
+            className="border border-neutral-6 bg-neutral-2 px-3 py-1.5 text-sm text-neutral-11 transition-colors hover:border-neutral-7 hover:bg-neutral-3 active:bg-neutral-4"
+            onClick={() => deleteAllLocalVideos()}
+          >
+            Delete all
+          </button>
+          <button
+            onClick={handleAddVideo}
+            className="flex items-center justify-center border border-neutral-6 bg-neutral-2 p-2 text-neutral-11 transition-colors hover:border-neutral-7 hover:bg-neutral-3 active:bg-neutral-4"
+          >
+            <span className="sr-only">Add video</span>
+            <Add01Icon strokeWidth={2} size={16} />
+          </button>
+        </>
+      }
+    >
+      {videos.length === 0 ? (
+        <div className="px-6 py-16 text-center text-neutral-10">
+          <p className="mb-1 text-neutral-11">No videos yet</p>
+          <p className="text-sm">Add a video to get started</p>
+        </div>
+      ) : (
+        <ul>
+          {videos.map((video, index) => (
+            <DownloadLineItem key={video.info.id} video={video} isLast={index === videos.length - 1} />
+          ))}
+        </ul>
+      )}
+    </Layout>
   );
 }
 
 function VideoPage() {
   const params = useParams<{ id: string }>();
+  const videoResult = useAtomSuspense(getVideoByIdAtom(params.id!));
   const localVideoUrlResult = useAtomSuspense(localVideoUrl(params.id!));
+  const localDownloadProgressResult = useAtomValue(
+    getLocalDownloadProgressAtom(
+      videoResult._tag === "Success"
+        ? videoResult.value
+        : { info: { id: params.id!, title: "", filename: "" }, status: "complete" as const },
+    ),
+  );
+
+  const deleteLocalVideo = useAtomSet(deleteLocalVideoAtom);
+  const downloadToLocal = useAtomSet(videoDownloadAtom(params.id!), {
+    mode: "promise",
+  });
 
   const videoSrc = Result.getOrElse(localVideoUrlResult, () => null) ?? `/api/videos/${params.id}`;
+  const video = videoResult._tag === "Success" ? videoResult.value : null;
+
+  // Compute local download state
+  const localProgress = Result.match(localDownloadProgressResult, {
+    onInitial: () => 0,
+    onSuccess: ({ value }) => value,
+    onFailure: () => 0,
+  });
+  const isOfflineReady = localProgress === 100;
+  const isLocalDownloading = localProgress > 0 && localProgress < 100;
 
   return (
-    <div className="min-h-screen bg-neutral-1">
-      <div className="mx-auto max-w-4xl">
-        <div className="border-x border-t border-neutral-6">
-          <header
-            className={`
-              flex items-center gap-2 px-4 py-4
-              sm:px-6 sm:py-5
-            `}
-          >
-            <Link
-              to="/"
-              className={`
-                text-sm text-neutral-11
-                hover:text-neutral-12 hover:underline
-              `}
-            >
-              ← Back
-            </Link>
-          </header>
-        </div>
-
-        <main
-          className={`
-            border-x border-neutral-6 px-4 py-6
-            sm:px-6 sm:py-8
-          `}
+    <Layout
+      leftAction={
+        <Link
+          to="/"
+          className="flex items-center justify-center p-1 text-neutral-10 transition-colors hover:text-neutral-11"
         >
-          <h1
-            className={`
-              mb-6 border-b border-neutral-6 pb-4 text-xl font-medium text-neutral-12
-              sm:text-2xl
-            `}
-          >
-            Video: {params.id}
-          </h1>
-          <div className="bg-neutral-2">
-            <video src={videoSrc} controls className="w-full" />
-          </div>
-        </main>
+          <ArrowLeft01Icon size={18} strokeWidth={2} />
+        </Link>
+      }
+      title="VideoSlug"
+    >
+      {/* Video Player */}
+      <div className="aspect-video w-full bg-neutral-2">
+        <video src={videoSrc} controls className="h-full w-full" />
       </div>
-    </div>
+
+      {/* Video Info */}
+      {video && (
+        <div className="px-4 py-4 sm:px-6 sm:py-6">
+          {/* Title */}
+          <h1 className="text-lg font-medium text-neutral-12 sm:text-xl">{video.info.title}</h1>
+
+          {/* Metadata row */}
+          <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-neutral-10">
+            {video.info.uploader && <span>{video.info.uploader}</span>}
+            {video.info.uploader && video.info.duration && <span className="text-neutral-8">{"\u00B7"}</span>}
+            {video.info.duration && (
+              <span className="font-mono text-neutral-9">{formatDuration(video.info.duration)}</span>
+            )}
+            {(video.info.uploader || video.info.duration) && video.info.upload_date && (
+              <span className="text-neutral-8">{"\u00B7"}</span>
+            )}
+            {video.info.upload_date && <span>{formatUploadDate(video.info.upload_date)}</span>}
+          </div>
+
+          {/* Actions */}
+          <div className="mt-4 flex flex-wrap items-center gap-2">
+            {video.status === "complete" && (
+              <>
+                {isOfflineReady ? (
+                  <button
+                    onClick={() => deleteLocalVideo(params.id!)}
+                    className="flex items-center gap-2 border border-neutral-6 bg-neutral-2 px-3 py-1.5 text-sm text-neutral-11 transition-colors hover:border-neutral-7 hover:bg-neutral-3"
+                  >
+                    <CheckmarkCircle02Icon size={14} />
+                    <span>Saved offline</span>
+                  </button>
+                ) : isLocalDownloading ? (
+                  <button
+                    disabled
+                    className="flex items-center gap-2 border border-neutral-6 bg-neutral-2 px-3 py-1.5 text-sm text-neutral-10"
+                  >
+                    <Loading03Icon size={14} className="animate-spin" />
+                    <span>Saving to device</span>
+                    <span className="font-mono">{localProgress}%</span>
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => downloadToLocal().then(console.log, console.error)}
+                    className="flex items-center gap-2 border border-neutral-6 bg-neutral-2 px-3 py-1.5 text-sm text-neutral-11 transition-colors hover:border-neutral-7 hover:bg-neutral-3"
+                  >
+                    <Download01Icon size={14} />
+                    <span>Save to device</span>
+                  </button>
+                )}
+              </>
+            )}
+
+            {video.info.webpage_url && (
+              <a
+                href={video.info.webpage_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-2 border border-neutral-6 bg-neutral-2 px-3 py-1.5 text-sm text-neutral-11 transition-colors hover:border-neutral-7 hover:bg-neutral-3"
+              >
+                <Link01Icon size={14} />
+                <span>View original</span>
+              </a>
+            )}
+          </div>
+
+          {/* Description */}
+          {video.info.description && (
+            <div className="mt-6 border-t border-neutral-6 pt-4">
+              <p className="whitespace-pre-wrap text-sm text-neutral-11">{video.info.description}</p>
+            </div>
+          )}
+        </div>
+      )}
+    </Layout>
   );
 }
 
