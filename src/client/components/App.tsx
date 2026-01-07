@@ -60,24 +60,53 @@ function Layout({
       <div className="mx-auto max-w-4xl">
         {/* Sticky header - no top border on mobile (blends into safe area), bordered on desktop */}
         <header
-          className="sticky top-0 z-50 border-b border-neutral-6 bg-neutral-1/95 backdrop-blur-sm sm:border-x sm:border-t"
+          className={`
+            sticky top-0 z-50 border-b border-neutral-6 bg-neutral-1/95 backdrop-blur-sm
+            sm:border-x sm:border-t
+          `}
           style={{ paddingTop: "env(safe-area-inset-top)" }}
         >
-          <div className="flex items-center justify-between px-4 py-3 sm:px-6 sm:py-4">
+          <div
+            className={`
+              flex items-center justify-between px-4 py-3
+              sm:px-6 sm:py-4
+            `}
+          >
             <div className="flex items-center gap-3">
               {leftAction}
               {title && (
-                <h1 className="text-base font-medium text-neutral-12 sm:text-lg">{title}</h1>
+                <h1
+                  className={`
+                    text-base font-medium text-neutral-12
+                    sm:text-lg
+                  `}
+                >
+                  {title}
+                </h1>
               )}
             </div>
             {rightActions && (
-              <div className="flex items-center gap-2 sm:gap-3">{rightActions}</div>
+              <div
+                className={`
+                  flex items-center gap-2
+                  sm:gap-3
+                `}
+              >
+                {rightActions}
+              </div>
             )}
           </div>
         </header>
 
         {/* Main content area */}
-        <main className="border-neutral-6 sm:border-x">{children}</main>
+        <main
+          className={`
+            border-neutral-6
+            sm:border-x
+          `}
+        >
+          {children}
+        </main>
       </div>
     </div>
   );
@@ -85,7 +114,14 @@ function Layout({
 
 // Separator component - inset on mobile, full-width on desktop
 function Separator() {
-  return <div className="mx-4 border-b border-neutral-6 sm:mx-0" />;
+  return (
+    <div
+      className={`
+        mx-4 border-b border-neutral-6
+        sm:mx-0
+      `}
+    />
+  );
 }
 
 const videosAtom = VideoSlugRpcClient.query("GetVideos", void 0, { reactivityKeys: ["videos"] });
@@ -262,14 +298,22 @@ function DownloadLineItem({ video, isLast }: { video: EnhancedVideoInfo; isLast:
   return (
     <>
       <li className="list-none">
-        <div className="flex gap-3 px-4 py-3 sm:gap-4 sm:px-6 sm:py-4">
+        <div
+          className={`
+            flex gap-3 px-4 py-3
+            sm:gap-4 sm:px-6 sm:py-4
+          `}
+        >
           {/* Thumbnail */}
           {video.info.thumbnail && (
             <Link to={`/video/${video.info.id}`} className="shrink-0">
               <img
                 src={`/api/thumbnails/${video.info.id}`}
                 alt=""
-                className="h-16 w-16 rounded object-cover sm:h-20 sm:w-20"
+                className={`
+                  h-16 w-16 rounded object-cover
+                  sm:h-20 sm:w-20
+                `}
               />
             </Link>
           )}
@@ -279,7 +323,10 @@ function DownloadLineItem({ video, isLast }: { video: EnhancedVideoInfo; isLast:
             {/* Title */}
             <Link
               to={`/video/${video.info.id}`}
-              className="line-clamp-2 text-sm font-medium text-neutral-12 hover:underline"
+              className={`
+                line-clamp-2 text-sm font-medium text-neutral-12
+                hover:underline
+              `}
             >
               {video.info.title}
             </Link>
@@ -304,8 +351,7 @@ function DownloadLineItem({ video, isLast }: { video: EnhancedVideoInfo; isLast:
                   {serverDownloadProgress._tag === "Success" && (
                     <span className="font-mono">
                       {Math.round(
-                        (serverDownloadProgress.value.downloaded_bytes /
-                          serverDownloadProgress.value.total_bytes) *
+                        (serverDownloadProgress.value.downloaded_bytes / serverDownloadProgress.value.total_bytes) *
                           100,
                       )}
                       %
@@ -342,7 +388,10 @@ function DownloadLineItem({ video, isLast }: { video: EnhancedVideoInfo; isLast:
                 {isOfflineReady ? (
                   <button
                     onClick={() => deleteLocalVideo(video.info.id)}
-                    className="flex items-center justify-center p-2 text-neutral-10 transition-colors hover:bg-neutral-3 hover:text-neutral-11"
+                    className={`
+                      flex items-center justify-center p-2 text-neutral-10 transition-colors
+                      hover:bg-neutral-3 hover:text-neutral-11
+                    `}
                     title="Remove from device"
                   >
                     <Delete01Icon size={16} strokeWidth={2} />
@@ -350,7 +399,10 @@ function DownloadLineItem({ video, isLast }: { video: EnhancedVideoInfo; isLast:
                 ) : !isLocalDownloading ? (
                   <button
                     onClick={() => downloadToLocal().then(console.log, console.error)}
-                    className="flex items-center justify-center p-2 text-neutral-10 transition-colors hover:bg-neutral-3 hover:text-neutral-11"
+                    className={`
+                      flex items-center justify-center p-2 text-neutral-10 transition-colors
+                      hover:bg-neutral-3 hover:text-neutral-11
+                    `}
                     title="Save to device"
                   >
                     <Download01Icon size={16} strokeWidth={2} />
@@ -393,14 +445,24 @@ function HomePage() {
       rightActions={
         <>
           <button
-            className="border border-neutral-6 bg-neutral-2 px-3 py-1.5 text-sm text-neutral-11 transition-colors hover:border-neutral-7 hover:bg-neutral-3 active:bg-neutral-4"
+            className={`
+              border border-neutral-6 bg-neutral-2 px-3 py-1.5 text-sm text-neutral-11
+              transition-colors
+              hover:border-neutral-7 hover:bg-neutral-3
+              active:bg-neutral-4
+            `}
             onClick={() => deleteAllLocalVideos()}
           >
             Delete all
           </button>
           <button
             onClick={handleAddVideo}
-            className="flex items-center justify-center border border-neutral-6 bg-neutral-2 p-2 text-neutral-11 transition-colors hover:border-neutral-7 hover:bg-neutral-3 active:bg-neutral-4"
+            className={`
+              flex items-center justify-center border border-neutral-6 bg-neutral-2 p-2
+              text-neutral-11 transition-colors
+              hover:border-neutral-7 hover:bg-neutral-3
+              active:bg-neutral-4
+            `}
           >
             <span className="sr-only">Add video</span>
             <Add01Icon strokeWidth={2} size={16} />
@@ -458,7 +520,10 @@ function VideoPage() {
       leftAction={
         <Link
           to="/"
-          className="flex items-center justify-center p-1 text-neutral-10 transition-colors hover:text-neutral-11"
+          className={`
+            flex items-center justify-center p-1 text-neutral-10 transition-colors
+            hover:text-neutral-11
+          `}
         >
           <ArrowLeft01Icon size={18} strokeWidth={2} />
         </Link>
@@ -472,9 +537,21 @@ function VideoPage() {
 
       {/* Video Info */}
       {video && (
-        <div className="px-4 py-4 sm:px-6 sm:py-6">
+        <div
+          className={`
+            px-4 py-4
+            sm:px-6 sm:py-6
+          `}
+        >
           {/* Title */}
-          <h1 className="text-lg font-medium text-neutral-12 sm:text-xl">{video.info.title}</h1>
+          <h1
+            className={`
+              text-lg font-medium text-neutral-12
+              sm:text-xl
+            `}
+          >
+            {video.info.title}
+          </h1>
 
           {/* Metadata row */}
           <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-neutral-10">
@@ -496,7 +573,11 @@ function VideoPage() {
                 {isOfflineReady ? (
                   <button
                     onClick={() => deleteLocalVideo(params.id!)}
-                    className="flex items-center gap-2 border border-neutral-6 bg-neutral-2 px-3 py-1.5 text-sm text-neutral-11 transition-colors hover:border-neutral-7 hover:bg-neutral-3"
+                    className={`
+                      flex items-center gap-2 border border-neutral-6 bg-neutral-2 px-3 py-1.5
+                      text-sm text-neutral-11 transition-colors
+                      hover:border-neutral-7 hover:bg-neutral-3
+                    `}
                   >
                     <CheckmarkCircle02Icon size={14} />
                     <span>Saved offline</span>
@@ -504,7 +585,10 @@ function VideoPage() {
                 ) : isLocalDownloading ? (
                   <button
                     disabled
-                    className="flex items-center gap-2 border border-neutral-6 bg-neutral-2 px-3 py-1.5 text-sm text-neutral-10"
+                    className={`
+                      flex items-center gap-2 border border-neutral-6 bg-neutral-2 px-3 py-1.5
+                      text-sm text-neutral-10
+                    `}
                   >
                     <Loading03Icon size={14} className="animate-spin" />
                     <span>Saving to device</span>
@@ -513,7 +597,11 @@ function VideoPage() {
                 ) : (
                   <button
                     onClick={() => downloadToLocal().then(console.log, console.error)}
-                    className="flex items-center gap-2 border border-neutral-6 bg-neutral-2 px-3 py-1.5 text-sm text-neutral-11 transition-colors hover:border-neutral-7 hover:bg-neutral-3"
+                    className={`
+                      flex items-center gap-2 border border-neutral-6 bg-neutral-2 px-3 py-1.5
+                      text-sm text-neutral-11 transition-colors
+                      hover:border-neutral-7 hover:bg-neutral-3
+                    `}
                   >
                     <Download01Icon size={14} />
                     <span>Save to device</span>
@@ -521,14 +609,12 @@ function VideoPage() {
                 )}
               </>
             )}
-
-
           </div>
 
           {/* Description */}
           {video.info.description && (
             <div className="mt-6 border-t border-neutral-6 pt-4">
-              <p className="whitespace-pre-wrap text-sm text-neutral-11">{video.info.description}</p>
+              <p className="text-sm whitespace-pre-wrap text-neutral-11">{video.info.description}</p>
             </div>
           )}
         </div>
