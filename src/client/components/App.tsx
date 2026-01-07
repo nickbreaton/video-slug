@@ -6,12 +6,10 @@ import {
   Add01Icon,
   ArrowLeft01Icon,
   CheckmarkCircle02Icon,
-  CloudDownloadIcon,
   Delete01Icon,
   Download01Icon,
   Loading03Icon,
   AlertCircleIcon,
-  Link01Icon,
 } from "hugeicons-react";
 import { Reactivity } from "@effect/experimental";
 import { EnhancedVideoInfo } from "@/schema/videos";
@@ -524,17 +522,7 @@ function VideoPage() {
               </>
             )}
 
-            {video.info.webpage_url && (
-              <a
-                href={video.info.webpage_url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-2 border border-neutral-6 bg-neutral-2 px-3 py-1.5 text-sm text-neutral-11 transition-colors hover:border-neutral-7 hover:bg-neutral-3"
-              >
-                <Link01Icon size={14} />
-                <span>View original</span>
-              </a>
-            )}
+
           </div>
 
           {/* Description */}
