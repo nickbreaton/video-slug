@@ -46,7 +46,7 @@ export const GET: APIRoute = async ({ params }) => {
     }
 
     return HttpServerResponse.stream(response.stream).pipe(
-      HttpServerResponse.setHeader("Cache-Control", "max-age=3600"),
+      HttpServerResponse.setHeader("Cache-Control", "max-age=31536000, immutable"),
       HttpServerResponse.toWeb,
     );
   });
