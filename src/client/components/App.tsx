@@ -169,7 +169,8 @@ function DownloadLineItem({ video, isLast }: { video: EnhancedVideoInfo; isLast:
           {video.info.thumbnail && (
             <Link to={`/video/${video.info.id}`} className="shrink-0">
               <img
-                src={`/api/thumbnail/${video.info.id}`}
+                // TODO: update this to use video thumbnail
+                src={video.info.thumbnail}
                 alt=""
                 className={`
                   h-16 w-16 rounded object-cover
