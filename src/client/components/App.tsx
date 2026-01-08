@@ -284,7 +284,7 @@ function HomePage() {
   const deleteAllLocalVideos = useAtomSet(deleteAllLocalVideosAtom);
 
   const handleAddVideo = () => {
-    const video = prompt("Enter video URL", "https://www.youtube.com/watch?v=3PFLeteDuyQ");
+    const video = prompt("Enter video URL");
     if (!video) return;
     download(video);
   };
