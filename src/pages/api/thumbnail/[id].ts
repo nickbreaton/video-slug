@@ -4,7 +4,7 @@ import { Effect, Layer, ManagedRuntime, Option } from "effect";
 import { memoMap } from "@/server/memoMap";
 import { VideoDirectoryService } from "@/server/services/VideoDirectoryService";
 import { BunContext } from "@effect/platform-bun";
-import { FetchHttpClient, HttpClient, HttpClientResponse, HttpServerResponse } from "@effect/platform";
+import { FetchHttpClient, HttpClient, HttpClientResponse, HttpServerResponse, Headers } from "@effect/platform";
 import { VideoRepo } from "@/server/services/VideoRepo";
 import { SqlLive } from "@/server/layers/SqlLive";
 
@@ -39,18 +39,18 @@ export const GET: APIRoute = async ({ params }) => {
       return yield* Effect.dieMessage("Video has no thumbnail");
     }
 
-    const response = yield* httpClient.get(thumbnail).pipe(
-      Effect.withRE
-    )
+    const response = yield* httpClient.get(thumbnail);
 
     if (response.status >= 300) {
       return yield* Effect.dieMessage(`Failed to fetch thumbnail: ${response.status}`);
     }
 
-    const buffer = yield* response.arrayBuffer
+    const buffer = yield* response.arrayBuffer;
+    const contentType = yield* Headers.get(response.headers, "Content-Type");
 
     return HttpServerResponse.raw(buffer).pipe(
       HttpServerResponse.setHeader("Cache-Control", "max-age=31536000, immutable"),
+      HttpServerResponse.setHeader("Content-Type", contentType),
       HttpServerResponse.toWeb,
     );
   });
