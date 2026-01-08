@@ -39,13 +39,17 @@ export const GET: APIRoute = async ({ params }) => {
       return yield* Effect.dieMessage("Video has no thumbnail");
     }
 
-    const response = yield* httpClient.get(thumbnail);
+    const response = yield* httpClient.get(thumbnail).pipe(
+      Effect.withRE
+    )
 
     if (response.status >= 300) {
       return yield* Effect.dieMessage(`Failed to fetch thumbnail: ${response.status}`);
     }
 
-    return HttpServerResponse.stream(response.stream).pipe(
+    const buffer = yield* response.arrayBuffer
+
+    return HttpServerResponse.raw(buffer).pipe(
       HttpServerResponse.setHeader("Cache-Control", "max-age=31536000, immutable"),
       HttpServerResponse.toWeb,
     );
