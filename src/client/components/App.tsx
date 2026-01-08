@@ -379,7 +379,7 @@ function VideoPage() {
     >
       {/* Video Player */}
       <div className="aspect-video w-full bg-neutral-2">
-        <video src={videoSrc} controls className="h-full w-full" />
+        <video src={videoSrc} controls className="h-full w-full" playsInline />
       </div>
 
       {/* Video Info */}
