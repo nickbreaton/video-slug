@@ -14,7 +14,6 @@ import { BrowserRouter, Link, Route, Routes, useNavigate, useParams } from "reac
 import { Suspense, type ReactNode } from "react";
 import {
   cachedVideosAtom,
-  deleteAllLocalVideosAtom,
   deleteFromLibraryAtom,
   deleteLocalVideoAtom,
   downloadAtom,
@@ -283,7 +282,6 @@ function DownloadLineItem({ video, isLast }: { video: EnhancedVideoInfo; isLast:
 function HomePage() {
   const videosResult = useAtomSuspense(cachedVideosAtom);
   const download = useAtomSet(downloadAtom);
-  const deleteAllLocalVideos = useAtomSet(deleteAllLocalVideosAtom);
 
   const handleAddVideo = () => {
     const video = prompt("Enter video URL");
@@ -297,31 +295,18 @@ function HomePage() {
     <Layout
       title="VideoSlug"
       rightActions={
-        <>
-          <button
-            className={`
-              border border-neutral-6 bg-neutral-2 px-3 py-1.5 text-sm text-neutral-11
-              transition-colors
-              hover:border-neutral-7 hover:bg-neutral-3
-              active:bg-neutral-4
-            `}
-            onClick={() => deleteAllLocalVideos()}
-          >
-            Delete all downloads
-          </button>
-          <button
-            onClick={handleAddVideo}
-            className={`
-              flex items-center justify-center border border-neutral-6 bg-neutral-2 p-2
-              text-neutral-11 transition-colors
-              hover:border-neutral-7 hover:bg-neutral-3
-              active:bg-neutral-4
-            `}
-          >
-            <span className="sr-only">Add video</span>
-            <Add01Icon strokeWidth={2} size={16} />
-          </button>
-        </>
+        <button
+          onClick={handleAddVideo}
+          className={`
+            flex items-center justify-center border border-neutral-6 bg-neutral-2 p-2
+            text-neutral-11 transition-colors
+            hover:border-neutral-7 hover:bg-neutral-3
+            active:bg-neutral-4
+          `}
+        >
+          <span className="sr-only">Add video</span>
+          <Add01Icon strokeWidth={2} size={16} />
+        </button>
       }
     >
       {videos.length === 0 ? (

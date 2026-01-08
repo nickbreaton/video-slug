@@ -164,11 +164,3 @@ export const deleteFromLibraryAtom = Atom.family((id: string) => {
     });
   });
 });
-
-export const deleteAllLocalVideosAtom = runtime.fn(() => {
-  return Effect.gen(function* () {
-    const localBlobService = yield* LocalBlobService;
-    yield* localBlobService.deleteAll();
-    yield* Reactivity.invalidate(["download"]);
-  });
-});
