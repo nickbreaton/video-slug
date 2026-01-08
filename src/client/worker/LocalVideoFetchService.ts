@@ -28,7 +28,7 @@ export class LocalVideoFetchService extends Effect.Service<LocalVideoFetchServic
         const [response] = yield* Effect.all(
           [
             httpClient
-              .get(`/api/videos/${id}`, {
+              .get(`/api/video/${id}`, {
                 headers: {
                   Range: `bytes=${progressValue}-${progressValue + chunkSize}`,
                   "Cache-Control": "no-store",

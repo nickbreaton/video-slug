@@ -168,7 +168,7 @@ function DownloadLineItem({ video, isLast }: { video: EnhancedVideoInfo; isLast:
           {video.info.thumbnail && (
             <Link to={`/video/${video.info.id}`} className="shrink-0">
               <img
-                src={`/api/thumbnails/${video.info.id}`}
+                src={`/api/thumbnail/${video.info.id}`}
                 alt=""
                 className={`
                   h-16 w-16 rounded object-cover
@@ -355,7 +355,7 @@ function VideoPage() {
     mode: "promise",
   });
 
-  const videoSrc = Result.getOrElse(localVideoUrlResult, () => null) ?? `/api/videos/${params.id}`;
+  const videoSrc = Result.getOrElse(localVideoUrlResult, () => null) ?? `/api/video/${params.id}`;
   const video = videoResult._tag === "Success" ? videoResult.value : null;
 
   // Compute local download state
