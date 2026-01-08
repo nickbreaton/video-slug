@@ -57,7 +57,12 @@ function Layout({
   rightActions?: ReactNode;
 }) {
   return (
-    <div className="min-h-screen bg-neutral-1">
+    <div
+      className={`
+        min-h-screen bg-neutral-1
+        sm:my-8
+      `}
+    >
       <div className="mx-auto max-w-4xl">
         {/* Sticky header - no top border on mobile (blends into safe area), bordered on desktop */}
         <header
@@ -103,7 +108,7 @@ function Layout({
         <main
           className={`
             border-neutral-6
-            sm:border-x
+            sm:border-x sm:border-b
           `}
         >
           {children}
