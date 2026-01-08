@@ -51,6 +51,11 @@ export class VideoRepo extends Effect.Service<VideoRepo>()("VideoRepo", {
       execute: (id) => sql`SELECT * FROM videos WHERE id = ${id}`,
     });
 
+    const deleteVideoById = SqlSchema.void({
+      Request: Schema.String,
+      execute: (id) => sql`DELETE FROM videos WHERE id = ${id}`,
+    });
+
     const enhanceVideo = Effect.fn(function* (video: VideoInfo) {
       const filePath = path.join(videosDir, video.filename);
 
@@ -70,6 +75,7 @@ export class VideoRepo extends Effect.Service<VideoRepo>()("VideoRepo", {
 
     return {
       insert: InsertVideoInfo.execute,
+      deleteVideoById,
       getAll: () =>
         Effect.gen(function* () {
           const videos = yield* getAllVideos();

@@ -23,6 +23,9 @@ export class LocalVideoRepository extends Effect.Service<LocalVideoRepository>()
         }),
 
       get: () => store.get(key).pipe(Effect.catchAll(() => Effect.dieMessage("Failed to read from local storage"))),
+
+      delete: (id: string) =>
+        Effect.asVoid(store.modify(key, (videos) => videos.filter((video) => video.info.id !== id))),
     };
   }),
 }) {}

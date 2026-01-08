@@ -1,5 +1,5 @@
 import type { APIRoute } from "astro";
-import { VideoSlugRpcs } from "@/schema/rpc";
+import { VideoDeletionError, VideoSlugRpcs } from "@/schema/rpc";
 import { DownloadProgress } from "@/schema/videos";
 import { BunContext, BunHttpServer } from "@effect/platform-bun";
 import { RpcSerialization, RpcServer } from "@effect/rpc";
@@ -40,6 +40,15 @@ const VideoSlugRpcsLive = VideoSlugRpcs.toLayer(
 
       GetVideos: () => {
         return videoRepo.getAll();
+      },
+
+      DeleteVideo: ({ id }) => {
+        return videoRepo.deleteVideoById(id).pipe(
+          Effect.catchAll((error) => {
+            console.error(error);
+            return new VideoDeletionError();
+          }),
+        );
       },
     };
   }),

@@ -145,12 +145,23 @@ export const videoDownloadAtom = Atom.family((id: string) => {
       );
       const stream = client.FetchVideo({ id });
       return stream.pipe(Stream.tap(() => Reactivity.invalidate(["download", id])));
-    }).pipe(
-      Effect.provide(
-        BrowserWorker.layerPlatform(() => new WorkerModule()),
-      ),
-      Stream.unwrapScoped,
-    );
+    }).pipe(Effect.provide(BrowserWorker.layerPlatform(() => new WorkerModule())), Stream.unwrapScoped);
+  });
+});
+
+export const deleteFromLibraryAtom = Atom.family((id: string) => {
+  return runtime.fn(() => {
+    return Effect.gen(function* () {
+      if (!window.confirm("Are you sure you want to permanently remove this video from your library?")) {
+        return;
+      }
+      const client = yield* VideoSlugRpcClient;
+      const localVideoRepository = yield* LocalVideoRepository;
+      yield* Atom.set(deleteLocalVideoAtom, id);
+      yield* localVideoRepository.delete(id);
+      yield* client("DeleteVideo", { id });
+      yield* Reactivity.invalidate(["videos"]);
+    });
   });
 });
 

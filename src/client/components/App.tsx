@@ -4,16 +4,18 @@ import {
   ArrowLeft01Icon,
   CheckmarkCircle02Icon,
   Delete01Icon,
+  MultiplicationSignIcon,
   DownloadSquare01Icon,
   Loading03Icon,
   AlertCircleIcon,
 } from "hugeicons-react";
 import { EnhancedVideoInfo } from "@/schema/videos";
-import { BrowserRouter, Link, Route, Routes, useParams } from "react-router-dom";
+import { BrowserRouter, Link, Route, Routes, useNavigate, useParams } from "react-router-dom";
 import { Suspense, type ReactNode } from "react";
 import {
   cachedVideosAtom,
   deleteAllLocalVideosAtom,
+  deleteFromLibraryAtom,
   deleteLocalVideoAtom,
   downloadAtom,
   getDownloadProgressByIdAtom,
@@ -305,7 +307,7 @@ function HomePage() {
             `}
             onClick={() => deleteAllLocalVideos()}
           >
-            Delete all
+            Delete all downloads
           </button>
           <button
             onClick={handleAddVideo}
@@ -339,9 +341,12 @@ function HomePage() {
 }
 
 function VideoPage() {
+  const navigate = useNavigate();
   const params = useParams<{ id: string }>();
+
   const videoResult = useAtomSuspense(getVideoByIdAtom(params.id!));
   const localVideoUrlResult = useAtomSuspense(localVideoUrl(params.id!));
+
   const localDownloadProgressResult = useAtomValue(
     getLocalDownloadProgressAtom(
       videoResult._tag === "Success"
@@ -351,9 +356,8 @@ function VideoPage() {
   );
 
   const deleteLocalVideo = useAtomSet(deleteLocalVideoAtom);
-  const downloadToLocal = useAtomSet(videoDownloadAtom(params.id!), {
-    mode: "promise",
-  });
+  const downloadToLocal = useAtomSet(videoDownloadAtom(params.id!), { mode: "promise" });
+  const deleteFromLibrary = useAtomSet(deleteFromLibraryAtom(params.id!), { mode: "promise" });
 
   const videoSrc = Result.getOrElse(localVideoUrlResult, () => null) ?? `/api/video/${params.id}`;
   const video = videoResult._tag === "Success" ? videoResult.value : null;
@@ -459,6 +463,20 @@ function VideoPage() {
                     <span>Save to device</span>
                   </button>
                 )}
+                <button
+                  onClick={async () => {
+                    await deleteFromLibrary();
+                    navigate("/");
+                  }}
+                  className={`
+                    flex items-center gap-2 border border-neutral-6 bg-neutral-2 px-3 py-1.5 text-sm
+                    text-neutral-11 transition-colors
+                    hover:border-neutral-7 hover:bg-neutral-3
+                  `}
+                >
+                  <MultiplicationSignIcon size={14} />
+                  <span>Delete from library</span>
+                </button>
               </>
             )}
           </div>

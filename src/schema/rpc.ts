@@ -9,6 +9,11 @@ export class DownloadInitiationError extends Schema.TaggedError<DownloadInitiati
   },
 ) {}
 
+export class VideoDeletionError extends Schema.TaggedError<VideoDeletionError>("VideoDeletionError")(
+  "VideoDeletionError",
+  {},
+) {}
+
 export class VideoSlugRpcs extends RpcGroup.make(
   Rpc.make("SaveVideo", {
     success: VideoInfo,
@@ -29,5 +34,12 @@ export class VideoSlugRpcs extends RpcGroup.make(
     success: Schema.Array(EnhancedVideoInfo),
     error: Schema.Void,
     payload: Schema.Void,
+  }),
+  Rpc.make("DeleteVideo", {
+    success: Schema.Void,
+    error: VideoDeletionError,
+    payload: {
+      id: Schema.String,
+    },
   }),
 ) {}
