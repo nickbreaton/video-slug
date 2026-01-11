@@ -10,39 +10,24 @@ import { LocalBlobService } from "../services/LocalBlobService";
 import { RpcClient } from "@effect/rpc";
 import { WorkerRpcs } from "@/schema/worker";
 import WorkerModule from "../worker/main.ts?worker";
+import { LocalVideoCollection } from "../services/LocalVideoCollection";
 
 export const videosAtom = VideoSlugRpcClient.query("GetVideos", void 0, { reactivityKeys: ["videos"] });
 
 export const runtime = Atom.runtime(
   VideoSlugRpcClient.layer.pipe(
     Layer.merge(Layer.orDie(LocalVideoRepository.Default)),
+    Layer.merge(LocalVideoCollection.Default),
     Layer.provide(FetchHttpClient.layer),
     Layer.provideMerge(LocalBlobService.Default),
   ),
 );
 
-export const cachedVideosAtom = runtime.atom((get) => {
-  return Effect.gen(function* () {
-    const localVideoRepository = yield* LocalVideoRepository;
-    const cache = yield* localVideoRepository.get();
-
-    const cacheStream = Option.isSome(cache) ? Stream.make(cache.value) : Stream.empty;
-
-    const serverStream = get.streamResult(videosAtom).pipe(
-      Stream.tap((value) => {
-        return localVideoRepository.set(value as EnhancedVideoInfo[]);
-      }),
-      Stream.catchAll((error) => {
-        console.log(
-          "TODO: Throw a toast or something to inform user of error but still keep online working well",
-          error,
-        );
-        return Stream.empty;
-      }),
-    );
-
-    return Stream.concat(cacheStream, serverStream);
-  }).pipe(Stream.unwrap);
+export const cachedVideosAtom = runtime.atom(() => {
+  return LocalVideoCollection.pipe(
+    Effect.andThen((collection) => collection.videos),
+    Stream.unwrap,
+  );
 });
 
 export const downloadAtom = VideoSlugRpcClient.runtime.fn(

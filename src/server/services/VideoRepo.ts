@@ -65,6 +65,7 @@ export class VideoRepo extends Effect.Service<VideoRepo>()("VideoRepo", {
       const stat = hasFile ? Option.some(yield* fs.stat(filePath)) : Option.none();
 
       const result: typeof EnhancedVideoInfo.Type = {
+        id: video.id,
         info: video,
         status: hasFile ? "complete" : hasStream ? "downloading" : "error",
         totalBytes: Option.map(stat, (s) => Number(s.size)).pipe(Option.getOrUndefined),

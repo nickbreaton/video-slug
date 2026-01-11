@@ -336,7 +336,7 @@ function VideoPage() {
     getLocalDownloadProgressAtom(
       videoResult._tag === "Success"
         ? videoResult.value
-        : { info: { id: params.id!, title: "", filename: "" }, status: "complete" as const },
+        : { id: params.id!, info: { id: params.id!, title: "", filename: "" }, status: "complete" as const },
     ),
   );
 

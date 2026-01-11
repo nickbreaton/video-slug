@@ -45,6 +45,7 @@ export const VideoDownloadStatus = Schema.Literal("downloading", "error", "compl
 export type VideoDownloadStatus = typeof VideoDownloadStatus.Type;
 
 export const EnhancedVideoInfo = Schema.Struct({
+  id: Schema.String,
   info: VideoInfo,
   status: VideoDownloadStatus,
   totalBytes: Schema.optional(Schema.Number),
