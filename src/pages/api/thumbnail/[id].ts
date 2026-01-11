@@ -45,10 +45,9 @@ export const GET: APIRoute = async ({ params }) => {
       return yield* Effect.dieMessage(`Failed to fetch thumbnail: ${response.status}`);
     }
 
-    const buffer = yield* response.arrayBuffer;
     const contentType = yield* Headers.get(response.headers, "Content-Type");
 
-    return HttpServerResponse.raw(buffer).pipe(
+    return HttpServerResponse.stream(response.stream).pipe(
       HttpServerResponse.setHeader("Cache-Control", "max-age=31536000, immutable"),
       HttpServerResponse.setHeader("Content-Type", contentType),
       HttpServerResponse.toWeb,
