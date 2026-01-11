@@ -8,7 +8,35 @@ import path from "node:path";
 
 // https://astro.build/config
 export default defineConfig({
-  integrations: [react(), serviceWorker()],
+  integrations: [
+    react(),
+    serviceWorker({
+      workbox: {
+        runtimeCaching: [
+          {
+            urlPattern: /\/api\/thumbnail\/.*/,
+            handler: "CacheFirst",
+            options: {
+              cacheName: "thumbnails",
+              cacheableResponse: {
+                statuses: [0, 200],
+              },
+            },
+          },
+          {
+            urlPattern: /^((?!^\/api\/).)*$/,
+            handler: "StaleWhileRevalidate",
+            options: {
+              cacheName: "pages",
+              cacheableResponse: {
+                statuses: [0, 200],
+              },
+            },
+          },
+        ],
+      },
+    }),
+  ],
   output: "static", // Static mode with server-rendered API routes (prerender: false)
   adapter: node({
     mode: "standalone",
