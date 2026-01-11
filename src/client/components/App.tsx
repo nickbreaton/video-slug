@@ -425,7 +425,7 @@ function VideoPage() {
                   </button>
                 ) : isLocalDownloading ? (
                   <button
-                    disabled
+                    onClick={() => downloadToLocal()}
                     className={`
                       flex items-center gap-2 border border-neutral-6 bg-neutral-2 px-3 py-1.5
                       text-sm text-neutral-10
