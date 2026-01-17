@@ -1,6 +1,6 @@
 import { FetchHttpClient } from "@effect/platform";
 import * as BrowserWorker from "@effect/platform-browser/BrowserWorker";
-import { Effect, Layer, Option, Stream } from "effect";
+import { Cause, Console, Effect, Layer, Option, Stream } from "effect";
 import { Atom } from "@effect-atom/atom-react";
 import { Reactivity } from "@effect/experimental";
 import { EnhancedVideoInfo } from "@/schema/videos";
@@ -11,8 +11,6 @@ import { RpcClient } from "@effect/rpc";
 import { WorkerRpcs } from "@/schema/worker";
 import WorkerModule from "../worker/main.ts?worker";
 
-export const videosAtom = VideoSlugRpcClient.query("GetVideos", void 0, { reactivityKeys: ["videos"] });
-
 export const runtime = Atom.runtime(
   VideoSlugRpcClient.layer.pipe(
     Layer.merge(Layer.orDie(LocalVideoRepository.Default)),
@@ -21,47 +19,35 @@ export const runtime = Atom.runtime(
   ),
 );
 
-export const cachedVideosAtom = runtime.atom((get) => {
-  return Effect.gen(function* () {
-    const localVideoRepository = yield* LocalVideoRepository;
-    const cache = yield* localVideoRepository.get();
-
-    const cacheStream = Option.isSome(cache) ? Stream.make(cache.value) : Stream.empty;
-
-    const serverStream = get.streamResult(videosAtom).pipe(
-      Stream.tap((value) => {
-        return localVideoRepository.set(value as EnhancedVideoInfo[]);
-      }),
-      Stream.catchAll((error) => {
-        console.log(
-          "TODO: Throw a toast or something to inform user of error but still keep online working well",
-          error,
-        );
-        return Stream.empty;
-      }),
-    );
-
-    return Stream.concat(cacheStream, serverStream);
-  }).pipe(Stream.unwrap);
+export const videosAtom = runtime.atom(() => {
+  return LocalVideoRepository.pipe(
+    Effect.andThen((repo) => repo.videos),
+    Stream.unwrap,
+  );
 });
 
-export const downloadAtom = VideoSlugRpcClient.runtime.fn(
-  Effect.fnUntraced(function* (url: string) {
-    const client = yield* VideoSlugRpcClient;
+export const downloadAtom = runtime.fn(
+  Effect.fnUntraced(
+    function* (url: string) {
+      const client = yield* VideoSlugRpcClient;
+      const localVideoRepository = yield* LocalVideoRepository;
 
-    const videoInfo = yield* client("SaveVideo", {
-      url: new URL(url),
-    });
+      // TODO: move this into the repository
+      const videoInfo = yield* client("SaveVideo", {
+        url: new URL(url),
+      });
 
-    yield* Reactivity.invalidate(["videos"]);
+      yield* localVideoRepository.invalidate;
 
-    return videoInfo;
-  }),
+      return videoInfo;
+    },
+    Effect.tapErrorCause((err) => Console.log("Failed to download video", Cause.pretty(err))),
+  ),
 );
 
 export const getVideoByIdAtom = Atom.family((id: string) => {
   return runtime.atom((get) => {
-    return get.streamResult(cachedVideosAtom).pipe(
+    return get.streamResult(videosAtom).pipe(
       Stream.map((videos) => videos.find((v) => v.info.id === id)),
       Stream.filter((v): v is EnhancedVideoInfo => v !== undefined),
     );
@@ -158,9 +144,9 @@ export const deleteFromLibraryAtom = Atom.family((id: string) => {
       const client = yield* VideoSlugRpcClient;
       const localVideoRepository = yield* LocalVideoRepository;
       yield* Atom.set(deleteLocalVideoAtom, id);
-      yield* localVideoRepository.delete(id);
+      yield* localVideoRepository.deleteFromLocalCache(id);
       yield* client("DeleteVideo", { id });
-      yield* Reactivity.invalidate(["videos"]);
+      yield* localVideoRepository.invalidate;
     });
   });
 });

@@ -13,7 +13,7 @@ import { EnhancedVideoInfo } from "@/schema/videos";
 import { BrowserRouter, Link, Route, Routes, useNavigate, useParams } from "react-router-dom";
 import { Suspense, type ReactNode } from "react";
 import {
-  cachedVideosAtom,
+  videosAtom,
   deleteFromLibraryAtom,
   deleteLocalVideoAtom,
   downloadAtom,
@@ -280,7 +280,7 @@ function DownloadLineItem({ video, isLast }: { video: EnhancedVideoInfo; isLast:
 }
 
 function HomePage() {
-  const videosResult = useAtomSuspense(cachedVideosAtom);
+  const videosResult = useAtomSuspense(videosAtom);
   const download = useAtomSet(downloadAtom);
 
   const handleAddVideo = () => {
