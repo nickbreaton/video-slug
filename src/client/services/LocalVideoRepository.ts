@@ -1,26 +1,20 @@
-import { Console, Data, Effect, identity, Mailbox, Option, ParseResult, Queue, Schedule, Schema, Stream } from "effect";
-import { EnhancedVideoInfo } from "@/schema/videos";
-// import { LocalBlobWriterService } from "./LocalBlobWriterService";
-import { KeyValueStore } from "@effect/platform";
+import { Effect, identity, Mailbox, Stream } from "effect";
 import { BrowserKeyValueStore } from "@effect/platform-browser";
-import { LocalBlobService } from "./LocalBlobService";
-import { Reactivity } from "@effect/experimental";
 import { VideoSlugRpcClient } from "./DownloadClient";
+import { EnhancedVideoCache } from "./EnhancedVideoCache";
+import { LocalBlobService } from "./LocalBlobService";
 
 export class LocalVideoRepository extends Effect.Service<LocalVideoRepository>()("LocalVideoRepository", {
-  dependencies: [BrowserKeyValueStore.layerLocalStorage, VideoSlugRpcClient.layer],
+  dependencies: [VideoSlugRpcClient.layer, EnhancedVideoCache.Default],
   scoped: Effect.gen(function* () {
-    const kv = yield* KeyValueStore.KeyValueStore;
-    const store = kv.forSchema(Schema.Array(EnhancedVideoInfo));
-    const blobService = yield* LocalBlobService;
+    const cache = yield* EnhancedVideoCache;
     const client = yield* VideoSlugRpcClient;
-
-    const storageKey = "videos";
+    const blobService = yield* LocalBlobService;
 
     const mailbox = yield* Mailbox.make();
     const refresh = mailbox.offer(void 0).pipe(Effect.asVoid);
 
-    const getFromClientCache = store.get(storageKey).pipe(
+    const getFromClientCache = cache.get().pipe(
       Effect.catchAll(() => {
         return Effect.dieMessage("Failed to read from local storage");
       }),
@@ -30,7 +24,7 @@ export class LocalVideoRepository extends Effect.Service<LocalVideoRepository>()
       Effect.tap((videos) => {
         return Effect.gen(function* () {
           const ids = videos.map((video) => video.info.id);
-          yield* store.set(storageKey, videos);
+          yield* cache.set(videos);
           yield* blobService.garbageCollect(ids);
         });
       }),
@@ -58,14 +52,11 @@ export class LocalVideoRepository extends Effect.Service<LocalVideoRepository>()
     // Refresh once on initialization
     yield* refresh;
 
-    // yield* refresh.pipe(Effect.repeat(Schedule.spaced("1 second")), Effect.forkDaemon);
-
     return {
       videos,
 
       // TODO: update this to handle deleting from API and local
-      deleteFromLocalCache: (id: string) =>
-        Effect.asVoid(store.modify(storageKey, (videos) => videos.filter((video) => video.info.id !== id))),
+      deleteFromLocalCache: (id: string) => cache.removeItem(id),
 
       invalidate: refresh,
     };
