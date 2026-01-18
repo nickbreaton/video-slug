@@ -47,7 +47,6 @@ export class LocalVideoRepository extends Effect.Service<LocalVideoRepository>()
     const videos = Mailbox.toStream(mailbox).pipe(
       Stream.flatMap(
         () => {
-          console.log("kick");
           const fromCache = Stream.fromEffect(getFromClientCache);
           const fromServer = Stream.fromEffect(getFromServer);
           return Stream.concat(fromCache, fromServer).pipe(Stream.filterMap(identity));
