@@ -1,6 +1,6 @@
 import { KeyValueStore } from "@effect/platform";
 import { BrowserKeyValueStore } from "@effect/platform-browser";
-import { Effect, Layer, Schema } from "effect";
+import { Effect, Option, Schema } from "effect";
 
 interface PlaybackTimeEntry {
   readonly time: number;
@@ -28,7 +28,10 @@ export class PlaybackTimeRepository extends Effect.Service<PlaybackTimeRepositor
 
       getPlaybackTime: Effect.fn(function* (id: string) {
         const entry = yield* store.get(key(id));
-        return entry?._tag === "Some" ? entry.value.time : null;
+        return entry.pipe(
+          Option.map((value) => value.time),
+          Option.getOrElse(() => 0),
+        );
       }),
     };
   }),
