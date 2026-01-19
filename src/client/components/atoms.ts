@@ -4,24 +4,24 @@ import { Cause, Console, Effect, Layer, Option, Stream } from "effect";
 import { Atom } from "@effect-atom/atom-react";
 import { Reactivity } from "@effect/experimental";
 import { EnhancedVideoInfo } from "@/schema/videos";
-import { LocalVideoRepository } from "../services/LocalVideoRepository";
+import { VideoRepository } from "../services/VideoRepository";
 import { VideoSlugRpcClient } from "../services/DownloadClient";
-import { LocalBlobService } from "../services/LocalBlobService";
+import { BlobService } from "../services/BlobService";
 import { RpcClient } from "@effect/rpc";
 import { WorkerRpcs } from "@/schema/worker";
 import { VideoDownloadWorkerService } from "../services/VideoDownloadWorkerService";
 
 export const runtime = Atom.runtime(
   VideoSlugRpcClient.layer.pipe(
-    Layer.merge(Layer.orDie(LocalVideoRepository.Default)),
+    Layer.merge(Layer.orDie(VideoRepository.Default)),
     Layer.merge(VideoDownloadWorkerService.Default),
     Layer.provide(FetchHttpClient.layer),
-    Layer.provideMerge(LocalBlobService.Default),
+    Layer.provideMerge(BlobService.Default),
   ),
 );
 
 export const videosAtom = runtime.atom(() => {
-  return LocalVideoRepository.pipe(
+  return VideoRepository.pipe(
     Effect.andThen((repo) => repo.videos),
     Stream.unwrap,
   );
@@ -31,14 +31,14 @@ export const downloadAtom = runtime.fn(
   Effect.fnUntraced(
     function* (url: string) {
       const client = yield* VideoSlugRpcClient;
-      const localVideoRepository = yield* LocalVideoRepository;
+      const videoRepository = yield* VideoRepository;
 
       // TODO: move this into the repository
       const videoInfo = yield* client("SaveVideo", {
         url: new URL(url),
       });
 
-      yield* localVideoRepository.invalidate;
+      yield* videoRepository.invalidate;
 
       return videoInfo;
     },
@@ -70,8 +70,8 @@ export const getLocalDownloadProgressAtom = Atom.family((video: EnhancedVideoInf
   return runtime
     .atom(
       Effect.gen(function* () {
-        const localBlobService = yield* LocalBlobService;
-        const file = yield* localBlobService.get(video.info.id);
+        const blobService = yield* BlobService;
+        const file = yield* blobService.get(video.info.id);
 
         if (Option.isNone(file) || !video.totalBytes) {
           return 0;
@@ -85,9 +85,9 @@ export const getLocalDownloadProgressAtom = Atom.family((video: EnhancedVideoInf
 
 export const openLocalVideoAtom = runtime.fn((id: string) => {
   return Effect.gen(function* () {
-    const localBlobService = yield* LocalBlobService;
+    const blobService = yield* BlobService;
 
-    const blob = yield* localBlobService.get(id);
+    const blob = yield* blobService.get(id);
 
     if (Option.isSome(blob)) {
       const video = document.createElement("video");
@@ -101,8 +101,8 @@ export const openLocalVideoAtom = runtime.fn((id: string) => {
 export const localVideoUrl = Atom.family((id: string) => {
   return runtime.atom(() => {
     return Effect.gen(function* () {
-      const localBlobService = yield* LocalBlobService;
-      const blob = yield* localBlobService.get(id);
+      const blobService = yield* BlobService;
+      const blob = yield* blobService.get(id);
 
       if (Option.isSome(blob)) {
         const url = URL.createObjectURL(blob.value);
@@ -117,8 +117,8 @@ export const localVideoUrl = Atom.family((id: string) => {
 
 export const deleteLocalVideoAtom = runtime.fn((id: string) => {
   return Effect.gen(function* () {
-    const localBlobService = yield* LocalBlobService;
-    yield* localBlobService.delete(id);
+    const blobService = yield* BlobService;
+    yield* blobService.delete(id);
     yield* Reactivity.invalidate(["download", id]);
   });
 });
@@ -139,11 +139,11 @@ export const deleteFromLibraryAtom = Atom.family((id: string) => {
         return;
       }
       const client = yield* VideoSlugRpcClient;
-      const localVideoRepository = yield* LocalVideoRepository;
+      const videoRepository = yield* VideoRepository;
       yield* Atom.set(deleteLocalVideoAtom, id);
-      yield* localVideoRepository.deleteFromLocalCache(id);
+      yield* videoRepository.deleteFromLocalCache(id);
       yield* client("DeleteVideo", { id });
-      yield* localVideoRepository.invalidate;
+      yield* videoRepository.invalidate;
     });
   });
 });

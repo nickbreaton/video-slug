@@ -1,7 +1,7 @@
 import * as BrowserRunner from "@effect/platform-browser/BrowserWorkerRunner";
 import * as RpcServer from "@effect/rpc/RpcServer";
 import { Effect, Layer, Stream } from "effect";
-import { LocalVideoFetchService } from "./LocalVideoFetchService";
+import { VideoFetchService } from "./VideoFetchService";
 import { FetchHttpClient } from "@effect/platform";
 import { WorkerRpcs, WorkerVideoFetchError } from "@/schema/worker";
 
@@ -10,7 +10,7 @@ const WorkerLive = RpcServer.layer(WorkerRpcs).pipe(
     WorkerRpcs.toLayer({
       FetchVideo: (payload) =>
         Effect.gen(function* () {
-          const fetchService = yield* LocalVideoFetchService;
+          const fetchService = yield* VideoFetchService;
           return fetchService.fetch(payload.id);
         }).pipe(
           Stream.unwrap,
@@ -27,7 +27,7 @@ const WorkerLive = RpcServer.layer(WorkerRpcs).pipe(
   ),
   Layer.provide(RpcServer.layerProtocolWorkerRunner),
   Layer.provide(BrowserRunner.layer),
-  Layer.provide(LocalVideoFetchService.Default),
+  Layer.provide(VideoFetchService.Default),
   Layer.provide(FetchHttpClient.layer),
 );
 

@@ -2,14 +2,14 @@ import { Effect, identity, Mailbox, Stream } from "effect";
 import { BrowserKeyValueStore } from "@effect/platform-browser";
 import { VideoSlugRpcClient } from "./DownloadClient";
 import { EnhancedVideoCache } from "./EnhancedVideoCache";
-import { LocalBlobService } from "./LocalBlobService";
+import { BlobService } from "./BlobService";
 
-export class LocalVideoRepository extends Effect.Service<LocalVideoRepository>()("LocalVideoRepository", {
+export class VideoRepository extends Effect.Service<VideoRepository>()("VideoRepository", {
   dependencies: [VideoSlugRpcClient.layer, EnhancedVideoCache.Default],
   scoped: Effect.gen(function* () {
     const cache = yield* EnhancedVideoCache;
     const client = yield* VideoSlugRpcClient;
-    const blobService = yield* LocalBlobService;
+    const blobService = yield* BlobService;
 
     const mailbox = yield* Mailbox.make();
     const refresh = mailbox.offer(void 0).pipe(Effect.asVoid);

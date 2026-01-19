@@ -1,11 +1,11 @@
 import { Effect } from "effect";
-import { LocalBlobService } from "../services/LocalBlobService";
+import { BlobService } from "../services/BlobService";
 import { OriginPrivateFileSystem, OriginPrivateFileSystemError } from "../services/OriginPrivateFileSystem";
 
-export class LocalBlobWriterService extends Effect.Service<LocalBlobWriterService>()("LocalBlobWriterService", {
-  dependencies: [LocalBlobService.Default, OriginPrivateFileSystem.Default],
+export class BlobWriterService extends Effect.Service<BlobWriterService>()("BlobWriterService", {
+  dependencies: [BlobService.Default, OriginPrivateFileSystem.Default],
   effect: Effect.gen(function* () {
-    const { directory } = yield* LocalBlobService;
+    const { directory } = yield* BlobService;
     const opfs = yield* OriginPrivateFileSystem;
 
     return {

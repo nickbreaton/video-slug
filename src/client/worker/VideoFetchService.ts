@@ -1,26 +1,26 @@
 import { Headers, HttpClient } from "@effect/platform";
 import { Data, Effect, Fiber, Option, Ref, Stream, SubscriptionRef } from "effect";
-import { LocalBlobWriterService } from "./LocalBlobWriterService";
+import { BlobWriterService } from "./BlobWriterService";
 import { parse as parseContentRange } from "content-range";
-import { LocalBlobService } from "../services/LocalBlobService";
+import { BlobService } from "../services/BlobService";
 
 export class VideoFetchError extends Data.TaggedError("VideoFetchError")<{
   readonly reason: string;
 }> {}
 
-export class LocalVideoFetchService extends Effect.Service<LocalVideoFetchService>()("LocalVideoFetchService", {
-  dependencies: [LocalBlobWriterService.Default, LocalBlobService.Default],
+export class VideoFetchService extends Effect.Service<VideoFetchService>()("VideoFetchService", {
+  dependencies: [BlobWriterService.Default, BlobService.Default],
   effect: Effect.gen(function* () {
     const httpClient = yield* HttpClient.HttpClient;
-    const localBlobService = yield* LocalBlobService;
-    const localBlobWriterService = yield* LocalBlobWriterService;
+    const blobService = yield* BlobService;
+    const blobWriterService = yield* BlobWriterService;
 
     const fetch = Effect.fn(function* (id: string, progress: SubscriptionRef.SubscriptionRef<number>) {
       const chunkSize = 1024 * 1024; // 1 MB
 
       let prevWriteFiber: Fiber.Fiber<void, "TODO_OPFSWriteError"> | undefined;
 
-      const writeHandle = yield* localBlobWriterService.createWriteHandle(id);
+      const writeHandle = yield* blobWriterService.createWriteHandle(id);
 
       while (true) {
         const progressValue = yield* Ref.get(progress);
@@ -68,7 +68,7 @@ export class LocalVideoFetchService extends Effect.Service<LocalVideoFetchServic
 
     const fetchStream = (id: string) =>
       Effect.gen(function* () {
-        const blob = yield* localBlobService.get(id);
+        const blob = yield* blobService.get(id);
         const initialProgress = Option.map(blob, (value) => value.size).pipe(Option.getOrElse(() => 0));
 
         const progress = yield* SubscriptionRef.make(initialProgress);

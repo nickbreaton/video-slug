@@ -1,7 +1,7 @@
 import { Effect, Option, Stream } from "effect";
 import { OriginPrivateFileSystem } from "./OriginPrivateFileSystem";
 
-export class LocalBlobService extends Effect.Service<LocalBlobService>()("LocalBlobService", {
+export class BlobService extends Effect.Service<BlobService>()("BlobService", {
   dependencies: [OriginPrivateFileSystem.Default],
   effect: Effect.gen(function* () {
     const opfs = yield* OriginPrivateFileSystem;
