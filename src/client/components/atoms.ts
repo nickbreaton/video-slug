@@ -10,11 +10,13 @@ import { BlobService } from "../services/BlobService";
 import { RpcClient } from "@effect/rpc";
 import { WorkerRpcs } from "@/schema/worker";
 import { VideoDownloadWorkerService } from "../services/VideoDownloadWorkerService";
+import { PlaybackTimeRepository } from "../services/PlaybackTimeRepository";
 
 export const runtime = Atom.runtime(
   VideoSlugRpcClient.layer.pipe(
     Layer.merge(Layer.orDie(VideoRepository.Default)),
     Layer.merge(VideoDownloadWorkerService.Default),
+    Layer.merge(PlaybackTimeRepository.Default),
     Layer.provide(FetchHttpClient.layer),
     Layer.provideMerge(BlobService.Default),
   ),
@@ -144,6 +146,21 @@ export const deleteFromLibraryAtom = Atom.family((id: string) => {
       yield* videoRepository.deleteFromLocalCache(id);
       yield* client("DeleteVideo", { id });
       yield* videoRepository.invalidate;
+    });
+  });
+});
+
+export const getPlaybackTimeAtom = Atom.family((id: string) => {
+  return runtime.atom(() => {
+    return PlaybackTimeRepository.pipe(Effect.andThen((repo) => repo.getPlaybackTime(id)));
+  });
+});
+
+export const setPlaybackTimeAtom = Atom.family((id: string) => {
+  return runtime.fn((time: number) => {
+    return Effect.gen(function* () {
+      const repo = yield* PlaybackTimeRepository;
+      yield* repo.setPlaybackTime(id, time);
     });
   });
 });

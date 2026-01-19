@@ -11,7 +11,7 @@ import {
 } from "hugeicons-react";
 import { EnhancedVideoInfo } from "@/schema/videos";
 import { BrowserRouter, Link, Route, Routes, useNavigate, useParams } from "react-router-dom";
-import { Suspense, type ReactNode } from "react";
+import { Suspense, useEffect, useRef, useState, type ReactNode } from "react";
 import {
   videosAtom,
   deleteFromLibraryAtom,
@@ -21,6 +21,8 @@ import {
   getLocalDownloadProgressAtom,
   getVideoByIdAtom,
   localVideoUrl,
+  setPlaybackTimeAtom,
+  getPlaybackTimeAtom,
   videoDownloadAtom,
 } from "./atoms";
 
@@ -343,6 +345,9 @@ function VideoPage() {
   const deleteLocalVideo = useAtomSet(deleteLocalVideoAtom);
   const downloadToLocal = useAtomSet(videoDownloadAtom(params.id!), { mode: "promise" });
   const deleteFromLibrary = useAtomSet(deleteFromLibraryAtom(params.id!), { mode: "promise" });
+  const setPlaybackTime = useAtomSet(setPlaybackTimeAtom(params.id!));
+  const savedPlaybackTimeResult = useAtomSuspense(getPlaybackTimeAtom(params.id!));
+  const [initialPlaybackTime] = useState(() => Result.getOrElse(savedPlaybackTimeResult, () => 0) ?? 0);
 
   const videoSrc = Result.getOrElse(localVideoUrlResult, () => null) ?? `/api/video/${params.id}`;
   const video = videoResult._tag === "Success" ? videoResult.value : null;
@@ -355,6 +360,28 @@ function VideoPage() {
   });
   const isOfflineReady = localProgress === 100;
   const isLocalDownloading = localProgress > 0 && localProgress < 100;
+
+  const videoRef = useRef<HTMLVideoElement>(null);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    const video = videoRef.current;
+    if (!video) return;
+
+    video.currentTime = initialPlaybackTime;
+
+    video.addEventListener(
+      "timeupdate",
+      () => {
+        if (video.currentTime > 0) {
+          setPlaybackTime(Math.floor(video.currentTime));
+        }
+      },
+      { signal: controller.signal },
+    );
+
+    return () => controller.abort();
+  }, [initialPlaybackTime]);
 
   return (
     <Layout
@@ -373,7 +400,7 @@ function VideoPage() {
     >
       {/* Video Player */}
       <div className="aspect-video w-full bg-neutral-2">
-        <video src={videoSrc} controls className="h-full w-full" playsInline />
+        <video src={videoSrc} controls className="h-full w-full" playsInline ref={videoRef} />
       </div>
 
       {/* Video Info */}
