@@ -9,11 +9,12 @@ import { VideoSlugRpcClient } from "../services/DownloadClient";
 import { LocalBlobService } from "../services/LocalBlobService";
 import { RpcClient } from "@effect/rpc";
 import { WorkerRpcs } from "@/schema/worker";
-import WorkerModule from "../worker/main.ts?worker";
+import { VideoDownloadWorkerService } from "../services/VideoDownloadWorkerService";
 
 export const runtime = Atom.runtime(
   VideoSlugRpcClient.layer.pipe(
     Layer.merge(Layer.orDie(LocalVideoRepository.Default)),
+    Layer.merge(VideoDownloadWorkerService.Default),
     Layer.provide(FetchHttpClient.layer),
     Layer.provideMerge(LocalBlobService.Default),
   ),
@@ -123,16 +124,12 @@ export const deleteLocalVideoAtom = runtime.fn((id: string) => {
 });
 
 export const videoDownloadAtom = Atom.family((id: string) => {
-  return runtime.fn(() => {
-    return Effect.gen(function* () {
-      const protocol = yield* RpcClient.makeProtocolWorker({ size: 1 });
-      const client = yield* RpcClient.make(WorkerRpcs).pipe(
-        Effect.provide(Layer.succeed(RpcClient.Protocol, protocol)),
-      );
-      const stream = client.FetchVideo({ id });
-      return stream.pipe(Stream.tap(() => Reactivity.invalidate(["download", id])));
-    }).pipe(Effect.provide(BrowserWorker.layerPlatform(() => new WorkerModule())), Stream.unwrapScoped);
-  });
+  return runtime.fn(() =>
+    Stream.fromEffect(VideoDownloadWorkerService).pipe(
+      Stream.flatMap((service) => service.download(id)),
+      Stream.tap(() => Reactivity.invalidate(["download", id])),
+    ),
+  );
 });
 
 export const deleteFromLibraryAtom = Atom.family((id: string) => {
