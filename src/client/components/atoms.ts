@@ -75,11 +75,11 @@ export const getLocalDownloadProgressAtom = Atom.family((video: EnhancedVideoInf
         const blobService = yield* BlobService;
         const file = yield* blobService.get(video.info.id);
 
-        if (Option.isNone(file) || !video.totalBytes) {
+        if (Option.isNone(file) || Option.isNone(video.totalBytes)) {
           return 0;
         }
 
-        return Math.round((file.value.size / video.totalBytes) * 100);
+        return Math.round((file.value.size / video.totalBytes.value) * 100);
       }),
     )
     .pipe(Atom.withReactivity(["download", video.info.id]));

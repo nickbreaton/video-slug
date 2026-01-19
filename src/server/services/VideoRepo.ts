@@ -5,16 +5,18 @@ import { SqlResolver, SqlSchema } from "@effect/sql";
 import { VideoDirectoryService } from "./VideoDirectoryService";
 import { FileSystem, Path } from "@effect/platform";
 import { DownloadStreamManager } from "./DownloadStreamManager";
+import { VideoTimestampService } from "./VideoTimestampService";
 import { EnhancedVideoInfo } from "@/schema/videos";
 
 export class VideoRepo extends Effect.Service<VideoRepo>()("VideoRepo", {
-  dependencies: [VideoDirectoryService.Default, DownloadStreamManager.Default],
+  dependencies: [VideoDirectoryService.Default, DownloadStreamManager.Default, VideoTimestampService.Default],
   effect: Effect.gen(function* () {
     const sql = yield* SqliteClient.SqliteClient;
     const { videosDir } = yield* VideoDirectoryService;
     const path = yield* Path.Path;
     const fs = yield* FileSystem.FileSystem;
     const downloadStreamManager = yield* DownloadStreamManager;
+    const timestampService = yield* VideoTimestampService;
 
     yield* sql`
       CREATE TABLE IF NOT EXISTS videos (
@@ -64,10 +66,13 @@ export class VideoRepo extends Effect.Service<VideoRepo>()("VideoRepo", {
 
       const stat = hasFile ? Option.some(yield* fs.stat(filePath)) : Option.none();
 
+      const timestampOption = yield* timestampService.getByVideoId(video.id);
+
       const result: typeof EnhancedVideoInfo.Type = {
         info: video,
         status: hasFile ? "complete" : hasStream ? "downloading" : "error",
-        totalBytes: Option.map(stat, (s) => Number(s.size)).pipe(Option.getOrUndefined),
+        totalBytes: Option.map(stat, (s) => Number(s.size)),
+        timestamp: timestampOption,
       };
 
       return result;

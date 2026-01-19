@@ -41,13 +41,19 @@ export class VideoNotFoundError extends Schema.TaggedError<VideoNotFoundError>("
   {},
 ) {}
 
+export class PlaybackTimeEntry extends Schema.Class<PlaybackTimeEntry>("PlaybackTimeEntry")({
+  time: Schema.Number,
+  updatedAt: Schema.Number,
+}) {}
+
 export const VideoDownloadStatus = Schema.Literal("downloading", "error", "complete");
 export type VideoDownloadStatus = typeof VideoDownloadStatus.Type;
 
 export const EnhancedVideoInfo = Schema.Struct({
   info: VideoInfo,
   status: VideoDownloadStatus,
-  totalBytes: Schema.optional(Schema.Number),
+  totalBytes: Schema.Option(Schema.Number),
+  timestamp: Schema.Option(PlaybackTimeEntry),
 });
 
 export type EnhancedVideoInfo = typeof EnhancedVideoInfo.Type;

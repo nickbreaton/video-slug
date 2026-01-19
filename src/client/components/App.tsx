@@ -1,4 +1,5 @@
 import { useAtomValue, useAtomSet, useAtomSuspense, Result } from "@effect-atom/atom-react";
+import { Option } from "effect";
 import {
   Add01Icon,
   ArrowLeft01Icon,
@@ -338,7 +339,7 @@ function VideoPage() {
     getLocalDownloadProgressAtom(
       videoResult._tag === "Success"
         ? videoResult.value
-        : { info: { id: params.id!, title: "", filename: "" }, status: "complete" as const },
+        : { info: { id: params.id!, title: "", filename: "" }, status: "complete" as const, totalBytes: Option.none(), timestamp: Option.none() },
     ),
   );
 

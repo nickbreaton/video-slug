@@ -1,22 +1,13 @@
 import { KeyValueStore } from "@effect/platform";
 import { BrowserKeyValueStore } from "@effect/platform-browser";
-import { Effect, Option, Schema } from "effect";
-
-interface PlaybackTimeEntry {
-  readonly time: number;
-  readonly updatedAt: number;
-}
-
-const PlaybackTimeEntrySchema = Schema.Struct({
-  time: Schema.Number,
-  updatedAt: Schema.Number,
-});
+import { Effect, Option } from "effect";
+import { PlaybackTimeEntry } from "@/schema/videos";
 
 export class PlaybackTimeRepository extends Effect.Service<PlaybackTimeRepository>()("PlaybackTimeRepository", {
   dependencies: [BrowserKeyValueStore.layerLocalStorage],
   effect: Effect.gen(function* () {
     const kv = yield* KeyValueStore.KeyValueStore;
-    const store = kv.forSchema(PlaybackTimeEntrySchema);
+    const store = kv.forSchema(PlaybackTimeEntry);
 
     const key = (id: string) => `playback-time:${id}`;
 
