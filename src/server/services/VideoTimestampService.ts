@@ -3,14 +3,11 @@ import { SqliteClient } from "@effect/sql-sqlite-bun";
 import { SqlResolver, SqlSchema } from "@effect/sql";
 import { Effect, Schema } from "effect";
 
-const VideoTimestamp = Schema.Struct({
-  id: Schema.String,
-  time: Schema.Number,
-  updatedAt: Schema.Number,
-});
+import { SqlLive } from "../layers/SqlLive";
+import { VideoDirectoryService } from "./VideoDirectoryService";
 
 export class VideoTimestampService extends Effect.Service<VideoTimestampService>()("VideoTimestampService", {
-  dependencies: [],
+  dependencies: [SqlLive],
   effect: Effect.gen(function* () {
     const sql = yield* SqliteClient.SqliteClient;
 
@@ -23,11 +20,14 @@ export class VideoTimestampService extends Effect.Service<VideoTimestampService>
       `;
 
     const upsertTimestamp = yield* SqlResolver.void("UpsertTimestamp", {
-      Request: VideoTimestamp,
+      Request: Schema.Struct({
+        id: Schema.String,
+        value: PlaybackTimeEntry,
+      }),
       execute: (requests) =>
         sql`
             INSERT INTO timestamps (video_id, time, updated_at)
-            VALUES (${requests.map((r) => r.id)}, ${requests.map((r) => r.time)}, ${requests.map((r) => r.updatedAt)})
+            VALUES (${requests.map((r) => r.id)}, ${requests.map((r) => r.value.time)}, ${requests.map((r) => r.value.updatedAt)})
             ON CONFLICT(video_id) DO UPDATE SET
               time = excluded.time,
               updated_at = excluded.updated_at

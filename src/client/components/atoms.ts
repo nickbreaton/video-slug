@@ -5,7 +5,7 @@ import { Atom } from "@effect-atom/atom-react";
 import { Reactivity } from "@effect/experimental";
 import { EnhancedVideoInfo } from "@/schema/videos";
 import { VideoRepository } from "../services/VideoRepository";
-import { VideoSlugRpcClient } from "../services/DownloadClient";
+import { VideoSlugRpcClient } from "../services/VideoSlugRpcClient";
 import { BlobService } from "../services/BlobService";
 import { RpcClient } from "@effect/rpc";
 import { WorkerRpcs } from "@/schema/worker";

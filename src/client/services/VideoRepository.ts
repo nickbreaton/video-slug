@@ -1,6 +1,6 @@
 import { Effect, identity, Mailbox, Stream } from "effect";
 import { BrowserKeyValueStore } from "@effect/platform-browser";
-import { VideoSlugRpcClient } from "./DownloadClient";
+import { VideoSlugRpcClient } from "./VideoSlugRpcClient";
 import { EnhancedVideoCache } from "./EnhancedVideoCache";
 import { BlobService } from "./BlobService";
 

@@ -1,7 +1,8 @@
-import { VideoInfo } from "@/schema/videos";
+import { PlaybackTimeEntry, VideoInfo } from "@/schema/videos";
 import { SqliteClient } from "@effect/sql-sqlite-bun";
 import { Effect, Option, Schema } from "effect";
 import { SqlResolver, SqlSchema } from "@effect/sql";
+import { SqlLive } from "../layers/SqlLive";
 import { VideoDirectoryService } from "./VideoDirectoryService";
 import { FileSystem, Path } from "@effect/platform";
 import { DownloadStreamManager } from "./DownloadStreamManager";
@@ -9,7 +10,7 @@ import { VideoTimestampService } from "./VideoTimestampService";
 import { EnhancedVideoInfo } from "@/schema/videos";
 
 export class VideoRepo extends Effect.Service<VideoRepo>()("VideoRepo", {
-  dependencies: [VideoDirectoryService.Default, DownloadStreamManager.Default, VideoTimestampService.Default],
+  dependencies: [SqlLive, VideoDirectoryService.Default, DownloadStreamManager.Default, VideoTimestampService.Default],
   effect: Effect.gen(function* () {
     const sql = yield* SqliteClient.SqliteClient;
     const { videosDir } = yield* VideoDirectoryService;
@@ -81,6 +82,9 @@ export class VideoRepo extends Effect.Service<VideoRepo>()("VideoRepo", {
     return {
       insert: InsertVideoInfo.execute,
       deleteVideoById,
+      upsertTimestamp: (entry: { id: string; value: PlaybackTimeEntry }) => {
+        return timestampService.upsert(entry);
+      },
       getAll: () =>
         Effect.gen(function* () {
           const videos = yield* getAllVideos();

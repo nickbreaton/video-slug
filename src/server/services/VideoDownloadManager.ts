@@ -6,7 +6,7 @@ import { DownloadStreamManager } from "@/server/services/DownloadStreamManager";
 import { VideoRepo } from "@/server/services/VideoRepo";
 
 export class VideoDownloadManager extends Effect.Service<VideoDownloadManager>()("VideoDownloadManager", {
-  dependencies: [VideoDownloadCommand.Default, DownloadStreamManager.Default],
+  dependencies: [VideoDownloadCommand.Default, DownloadStreamManager.Default, VideoRepo.Default],
   effect: Effect.gen(function* () {
     const videoDownloadCommand = yield* VideoDownloadCommand;
     const downloadStreamManager = yield* DownloadStreamManager;

@@ -9,4 +9,4 @@ export const SqlLive = Layer.unwrapEffect(
     const path = yield* Path.Path;
     return SqliteClient.layer({ filename: path.resolve(baseDir, "videos.db") });
   }),
-);
+).pipe(Layer.provide(VideoDirectoryService.Default));

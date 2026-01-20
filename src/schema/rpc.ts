@@ -1,6 +1,6 @@
 import { Rpc, RpcGroup } from "@effect/rpc";
 import { Schema } from "effect";
-import { DownloadProgress, EnhancedVideoInfo, VideoInfo } from "./videos.js";
+import { DownloadProgress, EnhancedVideoInfo, PlaybackTimeEntry, VideoInfo } from "./videos.js";
 
 export class DownloadInitiationError extends Schema.TaggedError<DownloadInitiationError>("DownloadInitiationError")(
   "DownloadInitiationError",
@@ -40,6 +40,14 @@ export class VideoSlugRpcs extends RpcGroup.make(
     error: VideoDeletionError,
     payload: {
       id: Schema.String,
+    },
+  }),
+  Rpc.make("UpdateTimestamp", {
+    success: Schema.Void,
+    error: Schema.Void,
+    payload: {
+      id: Schema.String,
+      value: PlaybackTimeEntry,
     },
   }),
 ) {}
